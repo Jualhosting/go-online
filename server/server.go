@@ -113,7 +113,6 @@ func (s *TunnelServer) Start() error {
 	// 2. Start QUIC Listener
 	listener, err := quic.ListenAddr(s.Addr, quicTLSConfig, &quic.Config{
 		KeepAlivePeriod: 5 * time.Second,
-		MaxIdleTimeout:  30 * time.Second,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to listen on QUIC: %w", err)
