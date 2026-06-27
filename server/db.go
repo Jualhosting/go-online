@@ -195,3 +195,9 @@ func (m *DBManager) AddStaticDeployment(subdomainID int64, r2BucketFolder, versi
 	)
 	return err
 }
+
+func (m *DBManager) GetLatestDeploymentFolder(subdomainID int64) (string, error) {
+	var folder string
+	err := m.db.QueryRow("SELECT r2_bucket_folder FROM static_deploys WHERE subdomain_id = ? ORDER BY id DESC LIMIT 1", subdomainID).Scan(&folder)
+	return folder, err
+}

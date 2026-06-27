@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mime"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -54,9 +55,10 @@ type TunnelServer struct {
 	tcpListenersMu sync.Mutex
 	tcpListeners   map[string]net.Listener
 
-	// Database and Cache
+	// Database, Cache, and R2 Storage
 	db         *DBManager
 	routeCache sync.Map
+	r2         *R2Manager
 }
 
 func NewTunnelServer(addr, domain, authToken, email, httpPort, httpsPort string) *TunnelServer {
@@ -84,6 +86,13 @@ func (s *TunnelServer) Start() error {
 		return fmt.Errorf("failed to initialize SQLite database: %w", err)
 	}
 	s.db = dbMgr
+
+	// Initialize Cloudflare R2 Manager
+	r2Mgr, err := NewR2Manager()
+	if err != nil {
+		return fmt.Errorf("failed to initialize Cloudflare R2 manager: %w", err)
+	}
+	s.r2 = r2Mgr
 
 	// Load all domains from SQLite into routeCache
 	if err := s.loadRoutesToCache(); err != nil {
@@ -340,17 +349,65 @@ func (s *TunnelServer) startHTTPListeners() {
 			proxy.ServeHTTP(w, r)
 			return
 		} else if info.RoutingType == "static" {
-			// Serve static files from local disk fallback
-			deployDir := filepath.Join(s.getDeployDir(), subdomainPrefix)
-			if info, err := os.Stat(deployDir); err == nil && info.IsDir() {
-				fs := http.FileServer(http.Dir(deployDir))
-				fs.ServeHTTP(w, r)
+			// Serve static files from Cloudflare R2 or local disk fallback
+			if s.r2 != nil && s.r2.IsEnabled() {
+				// 1. Fetch latest deploy version folder from DB
+				folder, err := s.db.GetLatestDeploymentFolder(info.SubdomainID)
+				if err != nil {
+					log.Printf("[Server Proxy] Failed to get latest deployment folder for %s: %v", subdomainPrefix, err)
+					w.WriteHeader(http.StatusNotFound)
+					fmt.Fprintf(w, "Static site %s has no active deployments.\n", subdomainPrefix)
+					return
+				}
+
+				// 2. Resolve request file path
+				cleanPath := filepath.Clean(r.URL.Path)
+				if strings.HasSuffix(r.URL.Path, "/") || cleanPath == "." || cleanPath == "/" {
+					cleanPath = "index.html"
+				}
+				cleanPath = strings.TrimPrefix(cleanPath, "/")
+
+				r2Key := folder + "/" + cleanPath
+				log.Printf("[R2 Serve] Fetching key: %s", r2Key)
+
+				// 3. Download from R2
+				body, contentType, err := s.r2.DownloadFile(r.Context(), r2Key)
+				if err != nil {
+					// Fallback to index.html if file not found (SPAs support)
+					log.Printf("[R2 Serve] File %s not found, checking index.html as fallback...", r2Key)
+					fallbackKey := folder + "/index.html"
+					body, contentType, err = s.r2.DownloadFile(r.Context(), fallbackKey)
+					if err != nil {
+						w.WriteHeader(http.StatusNotFound)
+						fmt.Fprintf(w, "File not found: %s\n", cleanPath)
+						return
+					}
+				}
+				defer body.Close()
+
+				// 4. Stream to visitor
+				if contentType != "" {
+					w.Header().Set("Content-Type", contentType)
+				} else {
+					// Fallback resolve content type
+					ext := filepath.Ext(cleanPath)
+					w.Header().Set("Content-Type", mime.TypeByExtension(ext))
+				}
+				w.WriteHeader(http.StatusOK)
+				io.Copy(w, body)
+				return
+			} else {
+				// Local disk fallback
+				deployDir := filepath.Join(s.getDeployDir(), subdomainPrefix)
+				if info, err := os.Stat(deployDir); err == nil && info.IsDir() {
+					fs := http.FileServer(http.Dir(deployDir))
+					fs.ServeHTTP(w, r)
+					return
+				}
+				w.WriteHeader(http.StatusNotFound)
+				fmt.Fprintf(w, "Static site %s has no active deployments.\n", subdomainPrefix)
 				return
 			}
-
-			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprintf(w, "Static site %s has no active deployments.\n", subdomainPrefix)
-			return
 		}
 	})
 
@@ -477,71 +534,16 @@ func (s *TunnelServer) handleDeploy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	deployDir := filepath.Join(s.getDeployDir(), subdomain)
-	// Clear old deployment
-	os.RemoveAll(deployDir)
-	if err := os.MkdirAll(deployDir, 0755); err != nil {
-		http.Error(w, "Failed to create deploy directory", http.StatusInternalServerError)
-		return
-	}
+	// 1. Generate version ID and prefix folder name
+	versionStr := fmt.Sprintf("deploy-%d", time.Now().UnixNano())
+	r2Prefix := subdomain + "/" + versionStr
 
-	// Unzip the body
-	zipReader, err := zip.NewReader(bytes.NewReader(body), int64(len(body)))
-	if err != nil {
-		http.Error(w, "Invalid zip archive", http.StatusBadRequest)
-		return
-	}
-
-	for _, file := range zipReader.File {
-		path := filepath.Join(deployDir, file.Name)
-		// Prevent path traversal
-		cleanDeployDir := filepath.Clean(deployDir)
-		cleanPath := filepath.Clean(path)
-		if !strings.HasPrefix(cleanPath, cleanDeployDir+string(filepath.Separator)) && cleanPath != cleanDeployDir {
-			continue
-		}
-
-		if file.FileInfo().IsDir() {
-			os.MkdirAll(path, 0755)
-			continue
-		}
-
-		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-			http.Error(w, "Failed to create directory structure", http.StatusInternalServerError)
-			return
-		}
-
-		dstFile, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
-		if err != nil {
-			http.Error(w, "Failed to open destination file", http.StatusInternalServerError)
-			return
-		}
-		
-		srcFile, err := file.Open()
-		if err != nil {
-			dstFile.Close()
-			http.Error(w, "Failed to open zip file member", http.StatusInternalServerError)
-			return
-		}
-
-		if _, err := io.Copy(dstFile, srcFile); err != nil {
-			dstFile.Close()
-			srcFile.Close()
-			http.Error(w, "Failed to extract file contents", http.StatusInternalServerError)
-			return
-		}
-		dstFile.Close()
-		srcFile.Close()
-	}
-
-	log.Printf("[Server Deploy] Successfully deployed %s to %s", subdomain, deployDir)
-
-	// Register/update subdomain in DB and cache
+	var subdomainID int64
 	if s.db != nil {
-		subdomainID, err := s.db.GetSubdomainID(subdomain)
+		id, err := s.db.GetSubdomainID(subdomain)
 		if err != nil {
 			// Register new static subdomain
-			id, err := s.db.RegisterSubdomain("user_syafri", subdomain, "static", "")
+			id, err = s.db.RegisterSubdomain("user_syafri", subdomain, "static", "")
 			if err != nil {
 				log.Printf("[Server Deploy] Failed to register subdomain: %v", err)
 			}
@@ -552,11 +554,115 @@ func (s *TunnelServer) handleDeploy(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				log.Printf("[Server Deploy] Failed to update subdomain to static: %v", err)
 			}
+			subdomainID = id
+		}
+	}
+
+	// Unzip the body
+	zipReader, err := zip.NewReader(bytes.NewReader(body), int64(len(body)))
+	if err != nil {
+		http.Error(w, "Invalid zip archive", http.StatusBadRequest)
+		return
+	}
+
+	// 2. Upload to Cloudflare R2 if enabled
+	if s.r2 != nil && s.r2.IsEnabled() {
+		log.Printf("[Server Deploy R2] Uploading zip contents to R2 prefix: %s...", r2Prefix)
+		for _, file := range zipReader.File {
+			// Prevent path traversal or dir entries
+			if file.FileInfo().IsDir() {
+				continue
+			}
+
+			// Clean path name
+			fileName := filepath.Clean(file.Name)
+			if strings.HasPrefix(fileName, "..") || strings.Contains(fileName, "../") {
+				continue
+			}
+
+			r2Key := r2Prefix + "/" + strings.ReplaceAll(file.Name, "\\", "/")
+			srcFile, err := file.Open()
+			if err != nil {
+				http.Error(w, "Failed to open zip file member", http.StatusInternalServerError)
+				return
+			}
+
+			ext := filepath.Ext(file.Name)
+			contentType := mime.TypeByExtension(ext)
+			if contentType == "" {
+				contentType = "application/octet-stream"
+			}
+
+			log.Printf("[Server Deploy R2] Uploading: %s (%s)", r2Key, contentType)
+			err = s.r2.UploadFile(r.Context(), r2Key, srcFile, contentType)
+			srcFile.Close()
+			if err != nil {
+				log.Printf("[Server Deploy R2] Failed to upload %s to R2: %v", r2Key, err)
+				http.Error(w, "Failed to upload files to R2", http.StatusInternalServerError)
+				return
+			}
 		}
 
-		// Save deployment metadata
-		versionStr := fmt.Sprintf("deploy-%d", time.Now().UnixNano())
-		err = s.db.AddStaticDeployment(subdomainID, subdomain, versionStr)
+		log.Printf("[Server Deploy R2] Successfully uploaded to R2 prefix: %s", r2Prefix)
+
+	} else {
+		// 3. Fallback: Save to local disk
+		deployDir := filepath.Join(s.getDeployDir(), subdomain)
+		os.RemoveAll(deployDir)
+		if err := os.MkdirAll(deployDir, 0755); err != nil {
+			http.Error(w, "Failed to create deploy directory", http.StatusInternalServerError)
+			return
+		}
+
+		for _, file := range zipReader.File {
+			path := filepath.Join(deployDir, file.Name)
+			cleanDeployDir := filepath.Clean(deployDir)
+			cleanPath := filepath.Clean(path)
+			if !strings.HasPrefix(cleanPath, cleanDeployDir+string(filepath.Separator)) && cleanPath != cleanDeployDir {
+				continue
+			}
+
+			if file.FileInfo().IsDir() {
+				os.MkdirAll(path, 0755)
+				continue
+			}
+
+			if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+				http.Error(w, "Failed to create directory structure", http.StatusInternalServerError)
+				return
+			}
+
+			dstFile, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
+			if err != nil {
+				http.Error(w, "Failed to open destination file", http.StatusInternalServerError)
+				return
+			}
+			
+			srcFile, err := file.Open()
+			if err != nil {
+				dstFile.Close()
+				http.Error(w, "Failed to open zip file member", http.StatusInternalServerError)
+				return
+			}
+
+			if _, err := io.Copy(dstFile, srcFile); err != nil {
+				dstFile.Close()
+				srcFile.Close()
+				http.Error(w, "Failed to extract file contents", http.StatusInternalServerError)
+				return
+			}
+			dstFile.Close()
+			srcFile.Close()
+		}
+		
+		log.Printf("[Server Deploy] Successfully deployed %s to %s", subdomain, deployDir)
+		// For local fallback, we save the subdomain folder name as the R2 bucket folder key
+		r2Prefix = subdomain
+	}
+
+	// 4. Save metadata to SQLite
+	if s.db != nil {
+		err = s.db.AddStaticDeployment(subdomainID, r2Prefix, versionStr)
 		if err != nil {
 			log.Printf("[Server Deploy] Failed to save deployment metadata: %v", err)
 		}
