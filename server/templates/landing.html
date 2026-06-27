@@ -399,15 +399,15 @@
             function updateCommand() {
                 const sub = inputSub.value.trim().toLowerCase().replace(/[^a-z0-9\-]/g, "") || "my-site";
                 if (os === "win") {
-                    cmdInput.value = `curl.exe -sSL https://goinstant.my.id/downloads/goinstant-windows.exe -o "$env:TEMP\\goinstant.exe"; &$env:TEMP\\goinstant.exe deploy -subdomain ${sub} .`;
+                    cmdInput.value = `Write-Host "📥 Downloading GoInstant CLI client..." -ForegroundColor Cyan; curl.exe -L https://goinstant.my.id/downloads/goinstant-windows.exe -o "$env:TEMP\\goinstant.exe"; Write-Host "📦 Commencing static site deployment..." -ForegroundColor Green; &$env:TEMP\\goinstant.exe deploy -subdomain ${sub} .`;
                     promptSymbol.innerText = "PS>";
                     osLabel.innerText = "DETECTED OS: WINDOWS (POWERSHELL ONE-LINER)";
                 } else if (os === "mac") {
-                    cmdInput.value = `curl -sS https://goinstant.my.id/downloads/goinstant-darwin -o /tmp/goinstant && chmod +x /tmp/goinstant && /tmp/goinstant deploy -subdomain ${sub} .`;
+                    cmdInput.value = `echo "📥 Downloading GoInstant CLI client..."; curl -L https://goinstant.my.id/downloads/goinstant-darwin -o /tmp/goinstant && chmod +x /tmp/goinstant && echo "📦 Commencing static site deployment..." && /tmp/goinstant deploy -subdomain ${sub} .`;
                     promptSymbol.innerText = "$";
                     osLabel.innerText = "DETECTED OS: MACOS (BASH ONE-LINER)";
                 } else {
-                    cmdInput.value = `curl -sS https://goinstant.my.id/downloads/goinstant-linux -o /tmp/goinstant && chmod +x /tmp/goinstant && /tmp/goinstant deploy -subdomain ${sub} .`;
+                    cmdInput.value = `echo "📥 Downloading GoInstant CLI client..."; curl -L https://goinstant.my.id/downloads/goinstant-linux -o /tmp/goinstant && chmod +x /tmp/goinstant && echo "📦 Commencing static site deployment..." && /tmp/goinstant deploy -subdomain ${sub} .`;
                     promptSymbol.innerText = "$";
                     osLabel.innerText = "DETECTED OS: LINUX (BASH ONE-LINER)";
                 }
