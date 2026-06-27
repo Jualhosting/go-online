@@ -1,0 +1,29 @@
+# Binaries
+bin/
+go-online
+go-online.exe
+mtm
+mtm.exe
+
+# Secret Configuration Files
+.env
+.env.local
+.env.*.local
+
+# Certificate Cache (CertMagic / Let's Encrypt)
+certs/
+.local/
+data/
+
+# IDE files
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# OS Files
+Thumbs.db
+Desktop.ini

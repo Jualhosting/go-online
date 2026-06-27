@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  mtm-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mtm-server
+    restart: unless-stopped
+    ports:
+      # QUIC Control plane port (UDP)
+      - "9000:9000/udp"
+      # Public HTTP port
+      - "80:80/tcp"
+      # Public HTTPS port
+      - "443:443/tcp"
+    environment:
+      # Inject environment variables from .env
+      - MTM_SERVER_ADDR=0.0.0.0:9000
+      - MTM_DOMAIN=${MTM_DOMAIN:-localhost}
+      - MTM_AUTH_TOKEN=${MTM_AUTH_TOKEN}
+      - MTM_ACME_EMAIL=${MTM_ACME_EMAIL}
+      - MTM_HTTP_PORT=80
+      - MTM_HTTPS_PORT=443
+    volumes:
+      # Persist Let's Encrypt certs to prevent hitting limits on container restarts
+      - certs-data:/app/certs
+
+volumes:
+  certs-data:
+    driver: local
