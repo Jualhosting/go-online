@@ -145,3 +145,70 @@ Ketika kode Go di server (`server.go`) dan kode CLI (`client.go`) dimodifikasi, 
 2. **On-Demand TLS Validation**: Fungsi callback pada CertMagic (yaitu `OnDemandConfig`) wajib melakukan query ke tabel `subdomains` untuk memvalidasi apakah subdomain atau `custom_domain` yang meminta sertifikat SSL berstatus valid (`is_active = 1`). Jika tidak ada di database, gagalkan handshake TLS demi mencegah eksploitasi kuota Let's Encrypt oleh pihak asing.
 3. **Pemisahan Logika Port**: Pastikan fungsi routing memisahkan penanganan antara domain tipe tunnel (diarahkan ke active channel port 9000) dan tipe static (diarahkan ke fungsi pembaca API Cloudflare R2).
 
+---
+
+## 7. PRD Addendum: Anonymous vs Authenticated User Flow
+
+### A. Strategi Manajemen Akses (Anonymous & Registered)
+Untuk membuat layanan ini viral, kita harus mengizinkan pengguna mencoba tanpa daftar. Namun, untuk mencegah penyalahgunaan (abuse) dan memicu pengguna untuk melakukan pembaruan data, kita pasang sistem Token.
+- **Anonymous User (Tanpa Daftar)**: Bisa langsung `expose` atau `deploy`. Subdomain akan diacak oleh server (misal: `rand-1234.goinstant.my.id`). Token temporer akan disimpan di laptop mereka secara otomatis dalam file `~/.goinstant/config.json`.
+- **Registered User (Daftar/Upgrade)**: Bisa memesan subdomain kustom yang statis (misal: `toko-syafri`), bisa menambahkan custom domain sendiri, dan memiliki kuota R2 yang lebih besar.
+
+### B. Skema Database Tambahan (SQL for AI)
+AI wajib menambahkan kolom token dan status pada tabel `users` untuk memvalidasi sesi dari CLI laptop:
+
+```sql
+-- Tambahkan kolom token dan is_anonymous jika belum ada
+ALTER TABLE users ADD COLUMN token TEXT UNIQUE;
+ALTER TABLE users ADD COLUMN is_anonymous INTEGER DEFAULT 1;
+```
+
+### C. Alur Logika & Cara Kerja (Flow untuk User)
+
+#### 1. Cara Pengguna Mau Daftar (Sign Up / Upgrade)
+Agar tidak perlu membuat halaman login dengan password yang ribet, gunakan metode Magic Link atau GitHub OAuth lewat browser yang dipicu langsung dari CLI.
+1. Pengguna mengetik di laptop: `goinstant login`
+2. **CLI Membuka Browser**: CLI Go akan otomatis membuka browser laptop pengguna ke halaman `https://goinstant.my.id/login?cli_session=xyz`.
+3. **Daftar via Web**: Pengguna memasukkan email atau klik "Login with GitHub".
+4. **Token Dikirim Balik**: Setelah sukses, web server VPS akan memperbarui tabel `users` (mengubah `is_anonymous` menjadi `0`) dan mengirimkan sebuah *Permanent API Token* kembali ke CLI. CLI menyimpannya di file `~/.goinstant/config.json`.
+
+#### 2. Cara Update File Web Statis (`goinstant deploy`)
+Ketika pengguna ingin memperbarui isi dari web statis mereka (misal mengubah kode HTML/CSS di folder lokal):
+1. Pengguna mengetik ulang perintah di folder yang sama:
+   ```bash
+   goinstant deploy --dir ./dist --subdomain portofolio
+   ```
+2. **Validasi Token & Subdomain di VPS**:
+   - CLI akan otomatis mengirimkan file beserta Token yang ada di laptop mereka (diambil dari `config.json`).
+   - Server Go di VPS akan memeriksa database: "Apakah subdomain 'portofolio' ini milik pengguna dengan token ini?"
+3. **Proses Timpa File di R2**:
+   - Jika **YA**, server Go akan menerima file baru tersebut, mengunggahnya ke Cloudflare R2 pada folder subdomain yang sama (versioned), lalu memperbarui data di tabel `static_deploys`.
+   - Jika **TIDAK** (misal orang lain mencoba membajak subdomain `portofolio`), server langsung menolak dengan error: `Error: Subdomain already taken by another user.`
+
+#### 3. Cara Update Domain / Pindah dari Subdomain ke Custom Domain
+Jika pengguna awalnya menggunakan `toko-syafri.goinstant.my.id` lalu ingin memperbaruinya menggunakan domain sendiri (`toko-syafri.com`):
+1. Pengguna menambahkan via CLI atau Web Dashboard:
+   ```bash
+   goinstant domain add toko-syafri.com --subdomain toko-syafri
+   ```
+2. **Validasi Kepemilikan di Go Server**:
+   - Server Go mengecek apakah pengguna tersebut adalah pemilik sah dari subdomain `toko-syafri` berdasarkan token mereka.
+   - Jika sah, server akan memperbarui tabel `subdomains` pada kolom `custom_domain` menjadi `toko-syafri.com`.
+3. **CertMagic Siap Beraksi**: Saat ada trafik masuk pertama kali ke `toko-syafri.com`, CertMagic di VPS langsung memicu On-Demand TLS karena datanya sudah sinkron di database SQLite.
+
+### D. System Flowchart (Mermaid)
+
+#### Alur Update / Deploy Ulang File Statis
+```mermaid
+graph TD
+    A[User ketik: goinstant deploy --subdomain toko-syafri] -->|Kirim File + Token dari config.json| B(VPS Server)
+    B -->|Cek SQLite| C{Token cocok dengan pemilik Subdomain?}
+    C -->|Tidak Cocok| D[Eror: Subdomain Telah Digunakan Orang Lain]
+    C -->|Cocok / Pemilik Sah| E[Terima File Baru & Upload ke Cloudflare R2]
+    E -->|Timpa Folder Lama| F[Update Tabel static_deploys]
+    F -->|Selesai| G[Kirim Status: Update Success ke CLI]
+```
+
+### E. Instruksi untuk AI Code Assistant
+- Setiap kali perintah `expose` atau `deploy` dijalankan tanpa menyertakan token registrasi (atau config lokal belum dibuat), sistem wajib membuat akun Anonymous otomatis di database SQLite dengan UUID acak, lalu memberikan token temporer tersebut kepada CLI untuk disimpan di `~/.goinstant/config.json`.
+- Kunci keamanan autentikasi berada pada kecocokan antara token di tabel `users` dan kepemilikan baris data di tabel `subdomains`. Jangan pernah mengizinkan mutasi data (baik update file maupun update domain) jika token tidak cocok dengan pemilik data aslinya.
