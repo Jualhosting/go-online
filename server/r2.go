@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -55,7 +56,7 @@ func (r *R2Manager) IsEnabled() bool {
 	return r.enabled
 }
 
-func (r *R2Manager) UploadFile(ctx context.Context, r2Key string, body io.Reader, contentType string) error {
+func (r *R2Manager) UploadFile(ctx context.Context, r2Key string, data []byte, contentType string) error {
 	if !r.enabled {
 		return fmt.Errorf("R2 manager is disabled")
 	}
@@ -68,7 +69,7 @@ func (r *R2Manager) UploadFile(ctx context.Context, r2Key string, body io.Reader
 	_, err := r.client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket:      aws.String(r.bucketName),
 		Key:         aws.String(r2Key),
-		Body:        body,
+		Body:        bytes.NewReader(data),
 		ContentType: ctype,
 	})
 	return err

@@ -555,7 +555,12 @@ func (s *TunnelServer) handleDeploy(w http.ResponseWriter, r *http.Request) {
 					errChan <- fmt.Errorf("failed to open %s: %w", f.Name, err)
 					return
 				}
-				defer srcFile.Close()
+				data, err := io.ReadAll(srcFile)
+				srcFile.Close()
+				if err != nil {
+					errChan <- fmt.Errorf("failed to read %s: %w", f.Name, err)
+					return
+				}
 
 				ext := filepath.Ext(f.Name)
 				contentType := mime.TypeByExtension(ext)
@@ -563,7 +568,7 @@ func (s *TunnelServer) handleDeploy(w http.ResponseWriter, r *http.Request) {
 					contentType = "application/octet-stream"
 				}
 
-				err = s.r2.UploadFile(r.Context(), k, srcFile, contentType)
+				err = s.r2.UploadFile(r.Context(), k, data, contentType)
 				if err != nil {
 					errChan <- fmt.Errorf("failed to upload %s: %w", f.Name, err)
 					return
