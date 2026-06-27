@@ -1,121 +1,61 @@
-# Magic Tunnel Mesh (MTM) / GoInstant 🚀
+# Product Knowledge & Architecture Blueprint: goinstant.my.id
 
-MTM (Magic Tunnel Mesh) / GoInstant is a modern, high-performance Zero-Trust Tunnel system written in pure Go. It allows developers to securely expose local applications (HTTP/HTTPS, SSH, DBs, etc.) running on home servers, mini-PCs (Proxmox, SBCs), or IoT devices to the public internet without public IP addresses, NAT configuration, or port forwarding.
+## 1. Vision & Core Value
+`goinstant.my.id` adalah sebuah platform SaaS infrastruktur (Developer Tools) modern berbasis Go (Golang) yang merangkap dua fungsi utama:
+- **Instant Tunneling (Ngrok-style)**: Mengekspos aplikasi localhost pengembang ke internet publik menggunakan protokol berkecepatan tinggi secara zero-config.
+- **Instant Static Deployment (Netlify-style)**: Mengunggah dan meng-host file statis (HTML/CSS/JS) ke cloud global dalam hitungan detik.
 
-It utilizes **QUIC (HTTP/3-based transport over UDP)** for lightning-fast and firewall-resistant tunneling, and integrates Caddy's **CertMagic** engine for automatic Let's Encrypt / ZeroSSL TLS certificate termination on the server.
-
----
-
-## Key Features
-
-- **Zero-Dependency Static Exposing**: Instantly expose a local static folder or HTML file (e.g., `D:\file client`) to the public internet. No Python, Node.js, or separate HTTP server installation needed!
-- **UDP/QUIC Under the Hood**: Excellent NAT-traversal, instant reconnection on network switches, and high throughput.
-- **Automatic SSL/TLS Termination**: Caddy's `CertMagic` engine automatically handles HTTP-01 and DNS-01 challenges to secure public subdomains.
-- **Local Dashboard & Web Inspector**: A premium dark-mode web console running on `localhost:4040` allowing you to inspect request/response headers, bodies, and **replay** requests with a single click.
-- **Docker Ready**: Built-in multi-stage `Dockerfile` and `docker-compose.yml` configuration for the server.
+**Prinsip Utama**: Klien/Pengguna akhir TIDAK BOLEH direpotkan untuk menginstal runtime language apa pun (seperti Go, Node.js, Python) di laptop mereka. Mereka cukup mengunduh satu file biner hasil kompilasi tunggal (Pre-compiled Single Binary) dari Go yang langsung bisa dieksekusi.
 
 ---
 
-## Project Structure
+## 2. System Architecture & Network Flow
+Infrastruktur jaringan berjalan di atas AWS EC2 (VPS) dan terintegrasi dengan Cloudflare R2. Port yang dibuka pada firewall AWS Security Group adalah **FINAL/SELESAI** dan tidak boleh ditambah:
+- **Port 80 (TCP)**: HTTP Publik / ACME HTTP Challenge.
+- **Port 443 (TCP)**: HTTPS Publik / Jalur Webhook, Web Traffic, dan Static Files.
+- **Port 9000 (UDP)**: Core Tunneling Connection. Jalur pipa khusus berbasis protokol QUIC/UDP tempat CLI lokal terhubung ke VPS server.
 
-```
-├── main.go               # Command line entrypoint (client/server router)
-├── server/
-├── server/
-│   ├── server.go         # QUIC Server listener, traffic proxy, and dynamic HTTP routing
-│   └── certs.go          # CertMagic and self-signed TLS handlers
-├── client/
-│   ├── client.go         # QUIC Client tunnel connection and local proxy
-│   └── inspector.go      # Local web dashboard inspector & replay engine
-├── common/
-│   └── protocol.go       # Handshake frames, stream headers, and JSON serialization
-├── Dockerfile            # Multi-stage optimized Docker build
-└── docker-compose.yml    # Server service orchestration
-```
+### A. Alur Kerja Fitur `expose` (Tunneling)
+1. Pengguna menjalankan perintah di terminal lokal:
+   ```bash
+   goinstant expose --port 8080 --subdomain toko-syafri
+   ```
+2. CLI lokal membuka koneksi persistent stream via **UDP Port 9000 (QUIC)** ke MTM-Server di VPS AWS.
+3. VPS menangkap domain `toko-syafri.goinstant.my.id`. Melalui pustaka **CertMagic (Go)**, server langsung mengurus SSL otomatis secara real-time ke Let's Encrypt lewat **port 443**.
+4. Publik mengakses `https://toko-syafri.goinstant.my.id` $\rightarrow$ VPS menerima trafik di **Port 443** $\rightarrow$ Diteruskan via pipa **UDP 9000** $\rightarrow$ Sampai di `localhost:8080` pengguna.
 
----
-
-## Getting Started
-
-### Prerequisites
-- Go 1.22+ (if building from source)
-- Docker & Docker Compose (for server deployment)
-
-### 1. Setup Configuration
-Create a `.env` file from the example:
-```bash
-cp .env.example .env
-```
-Edit the `.env` file to set your root domains, server addresses, tokens, and Cloudflare credentials (if using DNS-01 wildcards):
-- `MTM_SERVER_ADDR`: Bind address for server QUIC listener (e.g. `0.0.0.0:9000`).
-- `MTM_DOMAIN`: Root domain (e.g., `goinstant.my.id`).
-- `MTM_AUTH_TOKEN`: Secret key for client authorization.
-- `MTM_ACME_EMAIL`: Let's Encrypt recovery email.
+### B. Alur Kerja Fitur `deploy` (Web Static)
+1. Pengguna menjalankan perintah di terminal lokal:
+   ```bash
+   goinstant deploy --dir "./dist" --subdomain portofolio
+   ```
+2. CLI lokal mengompresi dan mengunggah file statis via **HTTP POST** ke VPS (**Port 443 TCP**).
+3. MTM-Server di VPS menerima file, lalu langsung melempar dan menyimpannya ke **Cloudflare R2 Object Storage** melalui API resmi.
+4. Situs online selamanya di `https://portofolio.goinstant.my.id`. Saat diakses, server membaca dari R2 (Zero Egress Fee / Gratis Bandwidth). Laptop pengguna bisa dimatikan dengan aman.
 
 ---
 
-## Running the Server (VPS)
-
-To start the server using Docker Compose (which exposes port 80, 443, and 9000 UDP, and persists SSL certificates):
-```bash
-docker compose up -d --build
-```
-
-To run the server directly using the Go binary:
-```bash
-go run main.go server -addr 0.0.0.0:9000 -domain goinstant.my.id -token mtm_secure_handshake_token_2026
-```
+## 3. Technical Specifications & Tech Stack
+- **Backend Engine (Server & CLI)**: Go (Golang) murni.
+- **SSL Automation**: Pustaka Go `github.com/caddyserver/certmagic` untuk On-Demand TLS di level kode server (Tanpa perlu biner Caddy terpisah, tanpa Certbot).
+- **Network Protocol**: QUIC / WebSockets (Go-native) untuk menembus NAT/Firewall ISP rumahan klien.
+- **Server Deployment**: Docker Container (`go-online-mtm-server`) berjalan di AWS EC2 Ubuntu.
+- **Storage Provider**: Cloudflare R2 untuk efisiensi biaya penyimpanan static web asset.
+- **Database Konfigurasi**: SQLite / Cloudflare D1 untuk menyimpan mapping subdomain pengguna secara instan.
 
 ---
 
-## Running the Client (Local Machine)
-
-Build the client binary:
-```bash
-go build -o goinstant.exe main.go
-```
-
-Expose a local port or deploy a static folder to the public internet using your server:
-
-### A. Expose Local Port (Ngrok-style Tunnel)
-To expose an application already running locally on port `8080`:
-```powershell
-# Using flags
-go run main.go expose --port 8080
-
-# Using positional fallback
-go run main.go 8080
-```
-
-### B. Deploy Static Directory (Netlify-style Hosting)
-To upload and host a static folder (like `D:\file client` containing `index.html`) directly on your VPS server:
-```powershell
-# Using flags
-go run main.go deploy --dir "D:\file client"
-
-# Using positional fallback
-go run main.go "D:\file client"
-```
-*Behind the scenes, the client packages the folder into a zip file, uploads it to the VPS's `/api/deploy` endpoint over TLS (authenticated with your token), and extracts it. The VPS then hosts your files statically under an SSL-secured subdomain (e.g. `https://magic-site-482.goinstant.my.id`).*
+## 4. Client Delivery & Packaging Policy
+- **Cross-Compilation**: Dockerfile di VPS wajib melakukan cross-compile otomatis saat proses build server untuk menghasilkan biner 3 OS utama: `goinstant-windows.exe`, `goinstant-linux`, dan `goinstant-darwin`.
+- **Distribution Mode**:
+  - **Portable Mode**: Pengguna cukup mengunduh biner dan menjalankannya langsung di dalam folder proyek menggunakan perintah `.\goinstant.exe`.
+  - **Global CLI Mode (Installer Script)**: Disediakan file `install.ps1` (Windows) dan `install.sh` (Linux/Mac) di rute `/downloads/` untuk otomatis mengunduh biner dan mendaftarkannya ke sistem PATH lingkungan pengguna. Setelah itu, pengguna bisa mengetik perintah bersih: `goinstant expose` atau `goinstant deploy` secara global tanpa embel-embel eksekusi file lokal.
 
 ---
 
-## Traffic Inspector Dashboard
-
-Open **[http://localhost:4040](http://localhost:4040)** in your browser to access the local developer panel:
-- **Inspect Traffic**: Read request parameters, JSON payloads, headers, and responses.
-- **Request Replay (1-Click)**: Resend any webhook or request to your local application instantly.
-
----
-
-## AI Agent & Developer Knowledge Base 🧠
-
-> [!IMPORTANT]
-> **Guidelines for AI Coding Assistants working on this repo:**
-> 1. **Subcommands**:
->    * `expose`: Establishes a live QUIC tunnel to expose a local port or address. (Flags: `--port`, `--subdomain`, `--server`, `--token`).
->    * `deploy`: Packages a local static directory into a zip archive and uploads it to the VPS (`/api/deploy`) for hosting. (Flags: `--dir`, `--subdomain`, `--server`, `--token`).
-> 2. **Fallback Auto-detection**: If no subcommand is specified (e.g., `go run main.go <arg>`), the CLI auto-detects. If the argument is a valid directory on disk, it executes `deploy`; otherwise, it treats it as a port and executes `expose`.
-> 3. **Server Static Hosting**: The VPS server dynamically intercepts HTTP requests. If an active QUIC tunnel exists for a subdomain, it proxies requests to the tunnel. If the tunnel is offline but a deployed static folder exists under `./deployed/<subdomain>/`, it serves files statically.
-> 4. **Default VPS Domain**: The default domain is `goinstant.my.id:9000`.
-> 5. **Subdomain Generation**: If no subdomain is specified, the client uses `generateRandomSubdomain()` to yield user-friendly Vercel-style subdomains (e.g. `clean-node-305`).
+## 5. Instruction for the AI Code Assistant
+- **JANGAN** menyarankan penambahan port terbuka baru di AWS selain 80, 443, dan 9000 (UDP).
+- **JANGAN** membuat konfigurasi yang mengharuskan klien lokal menginstal dependensi compiler pemrograman eksternal.
+- Gunakan efisiensi konkurensi Go (*goroutines*) untuk menangani multiplexing koneksi hulu-hilir (Port 443 $\leftrightarrow$ Port 9000).
+- Seluruh domain, routing, dan traffic handling wajib mengacu pada domain utama saat ini: `goinstant.my.id` dan wildcard-nya `*.goinstant.my.id`.
+- **Ikuti arsitektur dan product knowledge ini dengan disiplin. Jangan keluar dari jalur ini.**
