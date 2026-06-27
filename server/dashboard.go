@@ -54,6 +54,8 @@ func (s *TunnelServer) RegisterDashboardRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/analytics", s.authAPI(s.handleAPIAnalytics))
 	mux.HandleFunc("/api/billing/upgrade", s.authAPI(s.handleAPIBillingUpgrade))
 	mux.HandleFunc("/webhook/payment", s.handleWebhookPayment)
+	mux.HandleFunc("/in.ps1", s.handleScriptPS1)
+	mux.HandleFunc("/in.sh", s.handleScriptSH)
 }
 
 func (s *TunnelServer) handleLandingRoute(w http.ResponseWriter, r *http.Request) {
@@ -805,4 +807,39 @@ func (s *TunnelServer) handleWebhookPayment(w http.ResponseWriter, r *http.Reque
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(`{"status":"success"}`))
+}
+
+func (s *TunnelServer) handleScriptPS1(w http.ResponseWriter, r *http.Request) {
+	sub := r.URL.Query().Get("sub")
+	if sub == "" {
+		sub = "my-site"
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	script := fmt.Sprintf(`$ProgressPreference = 'SilentlyContinue';
+Write-Host "📥 Downloading GoInstant CLI client..." -ForegroundColor Cyan;
+curl.exe -L https://raw.githubusercontent.com/Jualhosting/go-online/main/downloads/goinstant-windows.exe -o "$env:TEMP\goinstant.exe";
+Write-Host "📦 Commencing static site deployment..." -ForegroundColor Green;
+&$env:TEMP\goinstant.exe deploy -subdomain %s .`, sub)
+	w.Write([]byte(script))
+}
+
+func (s *TunnelServer) handleScriptSH(w http.ResponseWriter, r *http.Request) {
+	sub := r.URL.Query().Get("sub")
+	if sub == "" {
+		sub = "my-site"
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	script := fmt.Sprintf(`#!/bin/bash
+OS_TYPE=$(uname -s | tr '[:upper:]' '[:lower:]')
+if [ "$OS_TYPE" = "darwin" ]; then
+    BINARY="goinstant-darwin"
+else
+    BINARY="goinstant-linux"
+fi
+echo "📥 Downloading GoInstant CLI client..."
+curl -L "https://raw.githubusercontent.com/Jualhosting/go-online/main/downloads/$BINARY" -o /tmp/goinstant
+chmod +x /tmp/goinstant
+echo "📦 Commencing static site deployment..."
+/tmp/goinstant deploy -subdomain %s .`, sub)
+	w.Write([]byte(script))
 }
