@@ -182,7 +182,7 @@ func runDeploy(args []string) {
 		dirVal = fs.Arg(0)
 	}
 	if dirVal == "" {
-		log.Fatalf("[Deploy] Error: Please specify a directory using -dir flag or as a positional argument.")
+		dirVal = "."
 	}
 
 	subdomainVal := *subdomain
