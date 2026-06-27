@@ -217,17 +217,17 @@ graph TD
 
 ## 8. Stitching & Developer Suite Implementation Summary
 
-We have fully integrated the custom developer console UI/UX mockups, built the backend APIs, enabled automated credentials config files, and enforced strict subdomain ownership validations.
+We have fully integrated the custom developer console UI/UX mockups, built the backend APIs, enabled automated credentials config files, enforced strict subdomain ownership validations, and integrated the Paymenku payment gateway.
 
 ### A. Template Directory & Embed Structure
 All 11 console pages are stored inside [server/templates](file:///d:/docker-server/go-online/server/templates) and embedded directly into the Go binary via `//go:embed templates/*` inside [dashboard.go](file:///d:/docker-server/go-online/server/dashboard.go):
 - `landing.html`: Public Landing Page & Binary Downloads
-- `login.html`: API Token Access Gate
-- `dashboard.html`: Tunnel Status and Bandwidth Summaries
-- `domains.html`: Subdomain & Whitelabel CNAME Manager
-- `webhooks.html`: Webhook Log Streams & Replay Engine
-- `files.html`: Static Deployment rolled histories (R2)
-- `settings.html`: API Tokens & Credentials manager
+- `login.html`: Authenticate and log in using your terminal API Token.
+- `dashboard.html`: Live tunnel instances list, bandwidth charts, and interactive Pro Plan upgrade payment modal.
+- `domains.html`: Dynamic DNS records viewer and custom domain binding interface.
+- `webhooks.html`: Dynamic real-time webhook inspector logs stream and replay engine execution.
+- `files.html`: Versioned static deployments rolled histories fetched directly from Cloudflare R2 bucket.
+- `settings.html`: CLI tokens creator and credentials manager.
 - `audit.html`: Security Audit Logs
 - `analytics.html`: Traffic aggregate bandwidth graphs
 - `status.html`: Latency, Uptime & health page
@@ -248,6 +248,9 @@ A central router registers all endpoints inside `RegisterDashboardRoutes(mux)`:
    - `/api/files`: R2 versioned static deployments list.
    - `/api/audit`: Action logging.
    - `/api/analytics`: Time-series graph dataset.
+4. **Billing & Paymenku Payment Gateway integration**:
+   - `/api/billing/upgrade` (POST): Generates a unique invoice reference (`INV-timestamp`), requests transaction creation on Paymenku API (`https://paymenku.com/api/v1/transaction/create`), saves the pending transaction, and returns the virtual account or QRIS payment link to the frontend.
+   - `/webhook/payment` (POST): Receives callbacks when transactions change status. Validates payload integrity via HMAC-SHA256 signature checks using the configured Webhook Secret. Automatically upgrades successful buyers to the PRO plan in the SQLite database.
 
 ### C. Client Configuration & Token Auto-Save
 - The client stores credentials at `~/.goinstant/config.json`.
