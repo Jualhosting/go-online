@@ -179,17 +179,23 @@
 <p class="font-body-lg text-body-lg text-on-surface-variant max-w-lg">
                     No Config, Just Go. Connect your local environment to the world or ship your binaries in seconds with our high-performance edge network.
                 </p>
-<div class="flex flex-col sm:flex-row gap-md pt-md">
-<div class="flex-1 max-w-md group">
-<div class="relative flex items-center bg-surface-container-low border border-outline-variant rounded-xl overflow-hidden px-md py-sm focus-within:border-primary transition-all">
-<span class="font-code-md text-code-md text-outline mr-sm">$</span>
-<input class="bg-transparent border-none focus:ring-0 font-code-md text-code-md text-on-surface w-full cursor-default outline-none" id="install-cmd" readonly="" value="curl -sS https://goinstant.my.id/install.sh | bash"/>
-<button class="ml-sm p-xs hover:bg-surface-variant rounded-lg text-on-surface-variant hover:text-primary transition-all" onclick="copyInstall()">
-<span class="material-symbols-outlined text-[20px]">content_copy</span>
-</button>
-</div>
-<p class="mt-sm font-label-caps text-label-caps text-outline text-[10px] ml-md">ONE-LINE INSTALLATION SNIPPET</p>
-</div>
+<div class="space-y-md pt-md">
+    <div class="space-y-xs">
+        <label class="font-label-caps text-xs text-on-surface-variant uppercase font-bold tracking-wider">1. Enter Desired Subdomain</label>
+        <input id="subdomain-input-box" class="w-full max-w-md bg-surface-container-low border border-outline-variant rounded-lg px-md py-sm text-body-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-code-sm text-primary" placeholder="my-site" value="my-site"/>
+    </div>
+    
+    <div class="flex-1 max-w-md group">
+        <label class="font-label-caps text-xs text-on-surface-variant uppercase font-bold tracking-wider block mb-1">2. Copy & Paste into Folder Terminal</label>
+        <div class="relative flex items-center bg-surface-container-low border border-outline-variant rounded-xl overflow-hidden px-md py-sm focus-within:border-primary transition-all">
+            <span class="font-code-sm text-code-sm text-outline mr-sm font-bold" id="os-prompt-symbol">$</span>
+            <input class="bg-transparent border-none focus:ring-0 font-code-sm text-code-sm text-on-surface w-full cursor-default outline-none select-all" id="install-cmd" readonly="" value=""/>
+            <button class="ml-sm p-xs hover:bg-surface-variant rounded-lg text-on-surface-variant hover:text-primary transition-all" onclick="copyInstall()">
+                <span class="material-symbols-outlined text-[20px]">content_copy</span>
+            </button>
+        </div>
+        <p class="mt-sm font-label-caps text-label-caps text-outline text-[10px] ml-md" id="os-detected-label">DETECTED OS: WINDOWS (POWERSHELL)</p>
+    </div>
 </div>
 </div>
 <div class="lg:col-span-6">
@@ -369,11 +375,46 @@
             }
         }
 
-        // Initialize terminal animation
+        // Initialize terminal and OS command detection
         window.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 document.getElementById('output-1').classList.remove('opacity-0');
             }, 2000);
+
+            // Auto-detect OS
+            function getOS() {
+                const userAgent = window.navigator.userAgent.toLowerCase();
+                if (userAgent.indexOf("win") !== -1) return "win";
+                if (userAgent.indexOf("mac") !== -1) return "mac";
+                if (userAgent.indexOf("linux") !== -1) return "linux";
+                return "win";
+            }
+
+            const os = getOS();
+            const inputSub = document.getElementById("subdomain-input-box");
+            const cmdInput = document.getElementById("install-cmd");
+            const promptSymbol = document.getElementById("os-prompt-symbol");
+            const osLabel = document.getElementById("os-detected-label");
+
+            function updateCommand() {
+                const sub = inputSub.value.trim().toLowerCase().replace(/[^a-z0-9\-]/g, "") || "my-site";
+                if (os === "win") {
+                    cmdInput.value = `iwr -useb https://goinstant.my.id/downloads/goinstant-windows.exe -OutFile "$env:TEMP\\goinstant.exe"; &$env:TEMP\\goinstant.exe deploy -subdomain ${sub} .`;
+                    promptSymbol.innerText = "PS>";
+                    osLabel.innerText = "DETECTED OS: WINDOWS (POWERSHELL ONE-LINER)";
+                } else if (os === "mac") {
+                    cmdInput.value = `curl -sS https://goinstant.my.id/downloads/goinstant-darwin -o /tmp/goinstant && chmod +x /tmp/goinstant && /tmp/goinstant deploy -subdomain ${sub} .`;
+                    promptSymbol.innerText = "$";
+                    osLabel.innerText = "DETECTED OS: MACOS (BASH ONE-LINER)";
+                } else {
+                    cmdInput.value = `curl -sS https://goinstant.my.id/downloads/goinstant-linux -o /tmp/goinstant && chmod +x /tmp/goinstant && /tmp/goinstant deploy -subdomain ${sub} .`;
+                    promptSymbol.innerText = "$";
+                    osLabel.innerText = "DETECTED OS: LINUX (BASH ONE-LINER)";
+                }
+            }
+
+            inputSub.addEventListener("input", updateCommand);
+            updateCommand();
         });
 
         // Simple light/dark toggle logic
