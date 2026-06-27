@@ -45,6 +45,7 @@ type TunnelServer struct {
 	HTTPPort  string
 	HTTPSPort string
 	DBPath    string
+	DeployDir string
 
 	clientsMu sync.RWMutex
 	clients   map[string]*ClientSession
@@ -340,7 +341,7 @@ func (s *TunnelServer) startHTTPListeners() {
 			return
 		} else if info.RoutingType == "static" {
 			// Serve static files from local disk fallback
-			deployDir := filepath.Join(".", "deployed", subdomainPrefix)
+			deployDir := filepath.Join(s.getDeployDir(), subdomainPrefix)
 			if info, err := os.Stat(deployDir); err == nil && info.IsDir() {
 				fs := http.FileServer(http.Dir(deployDir))
 				fs.ServeHTTP(w, r)
@@ -476,7 +477,7 @@ func (s *TunnelServer) handleDeploy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	deployDir := filepath.Join(".", "deployed", subdomain)
+	deployDir := filepath.Join(s.getDeployDir(), subdomain)
 	// Clear old deployment
 	os.RemoveAll(deployDir)
 	if err := os.MkdirAll(deployDir, 0755); err != nil {
@@ -626,4 +627,11 @@ func (s *TunnelServer) IsValidDomainForTLS(domainName string) bool {
 	}
 	info := val.(RouteInfo)
 	return info.IsActive
+}
+
+func (s *TunnelServer) getDeployDir() string {
+	if s.DeployDir != "" {
+		return s.DeployDir
+	}
+	return "./deployed"
 }
