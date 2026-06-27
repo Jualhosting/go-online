@@ -195,12 +195,20 @@ func runDeploy(args []string) {
 	}
 	
 	deployURL := fmt.Sprintf("%s://%s%s/api/deploy", scheme, hostOnly, portStr)
-	log.Printf("[Deploy] Uploading to %s...", deployURL)
+	totalSize := int64(len(zipData))
+	log.Printf("[Deploy] Target server: %s", deployURL)
+	log.Printf("[Deploy] Package payload size: %s", formatBytes(totalSize))
 
-	req, err := http.NewRequest("POST", deployURL, bytes.NewReader(zipData))
+	pr := &progressReader{
+		r:     bytes.NewReader(zipData),
+		total: totalSize,
+	}
+
+	req, err := http.NewRequest("POST", deployURL, pr)
 	if err != nil {
 		log.Fatalf("[Deploy] Failed to create HTTP request: %v", err)
 	}
+	req.ContentLength = totalSize
 	req.Header.Set("Authorization", "Bearer "+*token)
 	req.Header.Set("X-Subdomain", subdomainVal)
 	req.Header.Set("Content-Type", "application/zip")
@@ -209,7 +217,7 @@ func runDeploy(args []string) {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
-	httpClient := &http.Client{Transport: tr, Timeout: 60 * time.Second}
+	httpClient := &http.Client{Transport: tr, Timeout: 90 * time.Second}
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
@@ -245,6 +253,7 @@ func zipDirectory(source string) ([]byte, error) {
 	var buf bytes.Buffer
 	archive := zip.NewWriter(&buf)
 
+	fileCount := 0
 	err := filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -255,6 +264,7 @@ func zipDirectory(source string) ([]byte, error) {
 			if name == "node_modules" || name == ".git" || name == ".github" || name == ".vscode" || name == ".idea" || name == "tmp" {
 				return filepath.SkipDir
 			}
+			return nil
 		}
 
 		// Get relative path
@@ -272,20 +282,11 @@ func zipDirectory(source string) ([]byte, error) {
 		}
 
 		header.Name = filepath.ToSlash(relPath)
-		if info.IsDir() {
-			header.Name += "/"
-		} else {
-			header.Name = filepath.ToSlash(relPath)
-			header.Method = zip.Deflate
-		}
+		header.Method = zip.Deflate
 
 		writer, err := archive.CreateHeader(header)
 		if err != nil {
 			return err
-		}
-
-		if info.IsDir() {
-			return nil
 		}
 
 		file, err := os.Open(path)
@@ -295,6 +296,9 @@ func zipDirectory(source string) ([]byte, error) {
 		defer file.Close()
 
 		_, err = io.Copy(writer, file)
+		if err == nil {
+			fileCount++
+		}
 		return err
 	})
 
@@ -307,6 +311,7 @@ func zipDirectory(source string) ([]byte, error) {
 		return nil, err
 	}
 
+	log.Printf("[Deploy] Zipped %d files successfully.", fileCount)
 	return buf.Bytes(), nil
 }
 
@@ -315,4 +320,40 @@ func generateRandomSubdomain() string {
 	nouns := []string{"project", "site", "page", "app", "demo", "server", "mesh", "tunnel", "node", "code"}
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	return fmt.Sprintf("%s-%s-%d", adjectives[r.Intn(len(adjectives))], nouns[r.Intn(len(nouns))], r.Intn(900)+100)
+}
+
+type progressReader struct {
+	r       io.Reader
+	total   int64
+	read    int64
+	lastPct int
+}
+
+func (pr *progressReader) Read(p []byte) (int, error) {
+	n, err := pr.r.Read(p)
+	if n > 0 {
+		pr.read += int64(n)
+		pct := int(float64(pr.read) / float64(pr.total) * 100)
+		if pct != pr.lastPct {
+			fmt.Printf("\r  ⏳  Uploading website files: %d%% (%s/%s)...", pct, formatBytes(pr.read), formatBytes(pr.total))
+			pr.lastPct = pct
+		}
+	}
+	if err == io.EOF {
+		fmt.Println("\n  ✅  Upload complete! Waiting for server to deploy to Cloudflare R2...")
+	}
+	return n, err
+}
+
+func formatBytes(b int64) string {
+	const unit = 1024
+	if b < unit {
+		return fmt.Sprintf("%d B", b)
+	}
+	div, exp := int64(unit), 0
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "KMGTPE"[exp])
 }
