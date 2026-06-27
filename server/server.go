@@ -526,8 +526,12 @@ func (s *TunnelServer) handleDeploy(w http.ResponseWriter, r *http.Request) {
 	// 2. Upload to Cloudflare R2 if enabled
 	if s.r2 != nil && s.r2.IsEnabled() {
 		log.Printf("[Server Deploy R2] Uploading zip contents to R2 prefix: %s...", r2Prefix)
+		
+		var wg sync.WaitGroup
+		errChan := make(chan error, len(zipReader.File))
+		sem := make(chan struct{}, 15) // Run up to 15 uploads concurrently
+
 		for _, file := range zipReader.File {
-			// Prevent path traversal or dir entries
 			if file.FileInfo().IsDir() {
 				continue
 			}
@@ -539,26 +543,42 @@ func (s *TunnelServer) handleDeploy(w http.ResponseWriter, r *http.Request) {
 			}
 
 			r2Key := r2Prefix + "/" + strings.ReplaceAll(file.Name, "\\", "/")
-			srcFile, err := file.Open()
-			if err != nil {
-				http.Error(w, "Failed to open zip file member", http.StatusInternalServerError)
-				return
-			}
+			
+			wg.Add(1)
+			go func(f *zip.File, k string) {
+				defer wg.Done()
+				sem <- struct{}{}
+				defer func() { <-sem }()
 
-			ext := filepath.Ext(file.Name)
-			contentType := mime.TypeByExtension(ext)
-			if contentType == "" {
-				contentType = "application/octet-stream"
-			}
+				srcFile, err := f.Open()
+				if err != nil {
+					errChan <- fmt.Errorf("failed to open %s: %w", f.Name, err)
+					return
+				}
+				defer srcFile.Close()
 
-			log.Printf("[Server Deploy R2] Uploading: %s (%s)", r2Key, contentType)
-			err = s.r2.UploadFile(r.Context(), r2Key, srcFile, contentType)
-			srcFile.Close()
-			if err != nil {
-				log.Printf("[Server Deploy R2] Failed to upload %s to R2: %v", r2Key, err)
-				http.Error(w, "Failed to upload files to R2", http.StatusInternalServerError)
-				return
-			}
+				ext := filepath.Ext(f.Name)
+				contentType := mime.TypeByExtension(ext)
+				if contentType == "" {
+					contentType = "application/octet-stream"
+				}
+
+				err = s.r2.UploadFile(r.Context(), k, srcFile, contentType)
+				if err != nil {
+					errChan <- fmt.Errorf("failed to upload %s: %w", f.Name, err)
+					return
+				}
+			}(file, r2Key)
+		}
+
+		wg.Wait()
+		close(errChan)
+
+		if len(errChan) > 0 {
+			firstErr := <-errChan
+			log.Printf("[Server Deploy R2] Upload failed: %v", firstErr)
+			http.Error(w, fmt.Sprintf("Failed to upload files to R2: %v", firstErr), http.StatusInternalServerError)
+			return
 		}
 
 		log.Printf("[Server Deploy R2] Successfully uploaded to R2 prefix: %s", r2Prefix)
