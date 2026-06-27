@@ -13,7 +13,7 @@ import (
 func runServer() {
 	fs := flag.NewFlagSet("server", flag.ExitOnError)
 	
-	addr := fs.String("addr", getEnvOrDefault("MTM_SERVER_ADDR", "0.0.0.0:9000"), "QUIC tunnel listening address")
+	addr := fs.String("addr", getEnvOrDefault("MTM_SERVER_ADDR", "0.0.0.0:443"), "QUIC tunnel listening address")
 	domain := fs.String("domain", getEnvOrDefault("MTM_DOMAIN", "localhost"), "Root domain name for subdomains")
 	token := fs.String("token", getEnvOrDefault("MTM_AUTH_TOKEN", "mtm_secure_handshake_token_2026"), "Shared secret token for client authorization")
 	email := fs.String("email", getEnvOrDefault("MTM_ACME_EMAIL", "admin@localhost"), "Email address for ACME Let's Encrypt certificates")

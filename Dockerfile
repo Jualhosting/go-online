@@ -45,10 +45,10 @@ COPY --from=builder /app/mtm /app/mtm
 COPY --from=builder /app/downloads /app/downloads
 
 # Expose ports:
-# - 9000 (UDP) for client connections
+# - 443 (UDP) for client connections
 # - 80 (TCP) for HTTP traffic & Let's Encrypt challenges
 # - 443 (TCP) for HTTPS traffic
-EXPOSE 9000/udp 80/tcp 443/tcp
+EXPOSE 443/udp 80/tcp 443/tcp
 
 # Run the server by default. Override when running client.
 ENTRYPOINT ["/app/mtm"]

@@ -79,7 +79,7 @@ func getEnvOrDefault(key, defaultValue string) string {
 func runExpose(args []string) {
 	fs := flag.NewFlagSet("expose", flag.ExitOnError)
 
-	serverAddr := fs.String("server", getEnvOrDefault("MTM_SERVER_ADDR", "goinstant.my.id:9000"), "QUIC tunnel server address")
+	serverAddr := fs.String("server", getEnvOrDefault("MTM_SERVER_ADDR", "goinstant.my.id:443"), "QUIC tunnel server address")
 	subdomain := fs.String("subdomain", getEnvOrDefault("MTM_CLIENT_SUBDOMAIN", ""), "Requested subdomain prefix")
 	defaultToken := common.LoadLocalToken()
 	if defaultToken == "" {
@@ -149,7 +149,7 @@ func runExpose(args []string) {
 func runDeploy(args []string) {
 	fs := flag.NewFlagSet("deploy", flag.ExitOnError)
 
-	serverAddr := fs.String("server", getEnvOrDefault("MTM_SERVER_ADDR", "goinstant.my.id:9000"), "QUIC tunnel server address")
+	serverAddr := fs.String("server", getEnvOrDefault("MTM_SERVER_ADDR", "goinstant.my.id:443"), "QUIC tunnel server address")
 	subdomain := fs.String("subdomain", getEnvOrDefault("MTM_CLIENT_SUBDOMAIN", ""), "Requested subdomain prefix")
 	defaultToken := common.LoadLocalToken()
 	if defaultToken == "" {

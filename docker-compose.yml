@@ -8,15 +8,15 @@ services:
     container_name: mtm-server
     restart: unless-stopped
     ports:
-      # QUIC Control plane port (UDP)
-      - "9000:9000/udp"
+      # QUIC Control plane port (UDP) AND public HTTPS port (TCP)
+      - "443:443/udp"
       # Public HTTP port
       - "80:80/tcp"
       # Public HTTPS port
       - "443:443/tcp"
     environment:
       # Inject environment variables from .env
-      - MTM_SERVER_ADDR=0.0.0.0:9000
+      - MTM_SERVER_ADDR=0.0.0.0:443
       - MTM_DOMAIN=${MTM_DOMAIN:-localhost}
       - MTM_AUTH_TOKEN=${MTM_AUTH_TOKEN}
       - MTM_ACME_EMAIL=${MTM_ACME_EMAIL}
