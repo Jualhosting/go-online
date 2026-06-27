@@ -233,10 +233,31 @@ func (s *TunnelServer) startHTTPListeners() {
 	// Start Port 80 (HTTP) redirect or proxy server
 	go func() {
 		addr := ":" + s.HTTPPort
-		log.Printf("[Server] Traffic listener on port HTTP %s", addr)
+		log.Printf("[Server] Traffic listener on port HTTP %s (Redirect to HTTPS)", addr)
+		
+		redirectHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			host := r.Host
+			if h, _, err := net.SplitHostPort(host); err == nil {
+				host = h
+			}
+			
+			// Bypass HTTPS redirect for local development/testing to avoid DNS lookup issues
+			if host == "localhost" || host == "127.0.0.1" || strings.HasSuffix(host, ".localhost") {
+				handler.ServeHTTP(w, r)
+				return
+			}
+
+			target := "https://" + host + r.URL.Path
+			if r.URL.RawQuery != "" {
+				target += "?" + r.URL.RawQuery
+			}
+			log.Printf("[Server HTTP] Redirecting http://%s%s to %s", r.Host, r.URL.Path, target)
+			http.Redirect(w, r, target, http.StatusMovedPermanently)
+		})
+
 		server := &http.Server{
 			Addr:    addr,
-			Handler: handler,
+			Handler: redirectHandler,
 		}
 		if err := server.ListenAndServe(); err != nil {
 			log.Printf("[Server] HTTP listener error: %v", err)
