@@ -13,6 +13,7 @@ import (
 
 	"go-online/common"
 
+	"github.com/caddyserver/certmagic"
 	"github.com/quic-go/quic-go"
 )
 
@@ -257,7 +258,7 @@ func (s *TunnelServer) startHTTPListeners() {
 
 		server := &http.Server{
 			Addr:    addr,
-			Handler: redirectHandler,
+			Handler: certmagic.DefaultACME.HTTPChallengeHandler(redirectHandler),
 		}
 		if err := server.ListenAndServe(); err != nil {
 			log.Printf("[Server] HTTP listener error: %v", err)
