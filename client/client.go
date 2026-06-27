@@ -177,9 +177,6 @@ func (c *TunnelClient) handleHTTPStream(stream *quic.Stream) {
 	isUpgrade := strings.Contains(strings.ToLower(req.Header.Get("Connection")), "upgrade") ||
 		strings.Contains(strings.ToLower(req.Header.Get("Upgrade")), "websocket")
 
-	// Ensure Host header matches local target address for security checks in dashboards (like Portainer)
-	req.Host = c.TargetAddr
-
 	// Connect to local service
 	localConn, err := net.Dial("tcp", c.TargetAddr)
 	if err != nil {
@@ -231,7 +228,6 @@ func (c *TunnelClient) handleHTTPStream(stream *quic.Stream) {
 	// For standard HTTP: rewrite host and forward via local HTTP connection
 	req.URL.Scheme = "http"
 	req.URL.Host = c.TargetAddr
-	req.Host = c.TargetAddr
 	req.RequestURI = "" // must be blank for client requests
 
 	// Execute request to local application
