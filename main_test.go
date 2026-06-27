@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -63,6 +64,10 @@ func TestMTMTunnelEndToEnd(t *testing.T) {
 	domain := "localhost"
 
 	srv := server.NewTunnelServer(quicAddrStr, domain, authToken, "test@localhost", httpPort, httpsPort)
+	srv.DBPath = "./config_test_e2e.db"
+	_ = os.Remove(srv.DBPath)
+	defer os.Remove(srv.DBPath)
+	defer srv.Close()
 	
 	// Start server in background
 	go func() {
@@ -70,7 +75,7 @@ func TestMTMTunnelEndToEnd(t *testing.T) {
 			t.Logf("server exit: %v", err)
 		}
 	}()
-	time.Sleep(500 * time.Millisecond) // Wait for server setup
+	time.Sleep(2000 * time.Millisecond) // Wait for server setup
 
 	// 3. Start local dashboard inspector and client
 	inspectorPortStr := "4041" // use different port from default 4040 to avoid conflict
@@ -175,10 +180,17 @@ func TestMTMTunnelStaticDeployment(t *testing.T) {
 	domain := "localhost"
 
 	srv := server.NewTunnelServer(quicAddrStr, domain, authToken, "test@localhost", httpPort, httpsPort)
+	srv.DBPath = "./config_test_static.db"
+	_ = os.Remove(srv.DBPath)
+	defer os.Remove(srv.DBPath)
+	defer srv.Close()
+	
 	go func() {
-		_ = srv.Start()
+		if err := srv.Start(); err != nil {
+			log.Printf("[Test Server] start error: %v", err)
+		}
 	}()
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(2000 * time.Millisecond)
 
 	// Deploy using runDeploy
 	clientArgs := []string{

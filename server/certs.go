@@ -19,6 +19,9 @@ import (
 	"github.com/libdns/cloudflare"
 )
 
+// DomainValidator is a callback used to check if a domain is authorized for On-Demand TLS.
+var DomainValidator func(domain string) bool
+
 // GetTLSConfig returns a tls.Config. If the domain is localhost, it generates a self-signed cert.
 // Otherwise, it initializes CertMagic for automatic Let's Encrypt SSL/TLS.
 func GetTLSConfig(domain string, email string) (*tls.Config, error) {
@@ -54,8 +57,13 @@ func GetTLSConfig(domain string, email string) (*tls.Config, error) {
 	// We enable On-Demand TLS so certificates are requested the first time a client's subdomain is visited
 	certmagic.Default.OnDemand = &certmagic.OnDemandConfig{
 		DecisionFunc: func(ctx context.Context, name string) error {
-			// Only allow subdomains of our configured root domain
 			log.Printf("[CertMagic] Deciding whether to allow certificate for: %s", name)
+			if DomainValidator != nil {
+				if DomainValidator(name) {
+					return nil
+				}
+				return fmt.Errorf("domain %s is not allowed for On-Demand TLS", name)
+			}
 			return nil
 		},
 	}

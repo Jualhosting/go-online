@@ -29,6 +29,14 @@ type ClientSession struct {
 	Token      string
 }
 
+type RouteInfo struct {
+	SubdomainID int64
+	UserID      string
+	Subdomain   string
+	RoutingType string
+	IsActive    bool
+}
+
 type TunnelServer struct {
 	Addr      string
 	Domain    string
@@ -36,6 +44,7 @@ type TunnelServer struct {
 	Email     string
 	HTTPPort  string
 	HTTPSPort string
+	DBPath    string
 
 	clientsMu sync.RWMutex
 	clients   map[string]*ClientSession
@@ -43,6 +52,10 @@ type TunnelServer struct {
 	// Dynamic TCP listeners for custom non-HTTP ports
 	tcpListenersMu sync.Mutex
 	tcpListeners   map[string]net.Listener
+
+	// Database and Cache
+	db         *DBManager
+	routeCache sync.Map
 }
 
 func NewTunnelServer(addr, domain, authToken, email, httpPort, httpsPort string) *TunnelServer {
@@ -60,6 +73,27 @@ func NewTunnelServer(addr, domain, authToken, email, httpPort, httpsPort string)
 
 // Start runs the server's control plane (QUIC) and traffic listeners (HTTP/HTTPS).
 func (s *TunnelServer) Start() error {
+	// Initialize SQLite Database
+	dbPath := s.DBPath
+	if dbPath == "" {
+		dbPath = "./config.db"
+	}
+	dbMgr, err := NewDBManager(dbPath)
+	if err != nil {
+		return fmt.Errorf("failed to initialize SQLite database: %w", err)
+	}
+	s.db = dbMgr
+
+	// Load all domains from SQLite into routeCache
+	if err := s.loadRoutesToCache(); err != nil {
+		return fmt.Errorf("failed to populate route cache: %w", err)
+	}
+
+	// Setup global CertMagic domain validator
+	DomainValidator = func(domainName string) bool {
+		return s.IsValidDomainForTLS(domainName)
+	}
+
 	// 1. Generate TLS Config for QUIC control plane
 	quicTLSConfig, err := GenerateSelfSignedConfig()
 	if err != nil {
@@ -124,6 +158,37 @@ func (s *TunnelServer) handleClientConnection(conn *quic.Conn) {
 	subdomain := strings.ToLower(strings.TrimSpace(req.Subdomain))
 	if subdomain == "" {
 		subdomain = fmt.Sprintf("client-%d", time.Now().UnixNano()%10000)
+	}
+
+	// Look up subdomain in cache
+	val, found := s.routeCache.Load(subdomain)
+	if !found {
+		log.Printf("[Server] Handshake failed: Subdomain %s is not registered in the database.", subdomain)
+		common.WriteJSON(stream, common.HandshakeResponse{
+			Success: false,
+			Error:   "Subdomain is not registered",
+		})
+		conn.CloseWithError(4, "subdomain not registered")
+		return
+	}
+	info := val.(RouteInfo)
+	if !info.IsActive {
+		log.Printf("[Server] Handshake failed: Subdomain %s is inactive.", subdomain)
+		common.WriteJSON(stream, common.HandshakeResponse{
+			Success: false,
+			Error:   "Subdomain is inactive",
+		})
+		conn.CloseWithError(5, "subdomain inactive")
+		return
+	}
+	if info.RoutingType != "tunnel" {
+		log.Printf("[Server] Handshake failed: Subdomain %s is configured for %s, not tunnel.", subdomain, info.RoutingType)
+		common.WriteJSON(stream, common.HandshakeResponse{
+			Success: false,
+			Error:   "Subdomain is configured for static deployment",
+		})
+		conn.CloseWithError(6, "invalid routing type")
+		return
 	}
 
 	s.clientsMu.Lock()
@@ -198,17 +263,84 @@ func (s *TunnelServer) startHTTPListeners() {
 
 		host := r.Host
 		subdomain := s.extractSubdomain(host)
+		lookupKey := host
+		if subdomain != "" {
+			lookupKey = subdomain
+		}
+		lookupKey = strings.ToLower(lookupKey)
 
-		if subdomain == "" {
+		// Check routeCache
+		val, found := s.routeCache.Load(lookupKey)
+		if !found {
+			// Fallback: if it's a subdomain and not in cache, return 404
+			if subdomain != "" {
+				w.WriteHeader(http.StatusNotFound)
+				fmt.Fprintf(w, "Subdomain %s is not registered.\n", subdomain)
+				return
+			}
+			// Root domain landing
 			w.Header().Set("Content-Type", "text/html")
 			w.Write([]byte(LandingHTML))
 			return
 		}
 
-		session := s.getClient(subdomain)
-		if session == nil {
-			// Check if there's a static deployment
-			deployDir := filepath.Join(".", "deployed", subdomain)
+		info := val.(RouteInfo)
+		if !info.IsActive {
+			w.WriteHeader(http.StatusForbidden)
+			fmt.Fprintf(w, "Site %s is inactive.\n", lookupKey)
+			return
+		}
+
+		subdomainPrefix := info.Subdomain
+
+		if info.RoutingType == "tunnel" {
+			session := s.getClient(subdomainPrefix)
+			if session == nil {
+				w.WriteHeader(http.StatusNotFound)
+				fmt.Fprintf(w, "Tunnel %s.%s is not online.\n", subdomainPrefix, s.Domain)
+				return
+			}
+
+			// Use a reverse proxy to forward the HTTP request over QUIC
+			proxy := &httputil.ReverseProxy{
+				Director: func(req *http.Request) {
+					req.URL.Scheme = "http"
+					req.URL.Host = r.Host
+				},
+				Transport: &http.Transport{
+					DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+						log.Printf("[Server Proxy] DialContext called, opening QUIC stream to client...")
+						// Open a new QUIC stream for this HTTP request
+						stream, err := session.Connection.OpenStreamSync(ctx)
+						if err != nil {
+							log.Printf("[Server Proxy] Failed to open QUIC stream: %v", err)
+							return nil, err
+						}
+						log.Printf("[Server Proxy] QUIC stream opened (ID: %d)", stream.StreamID())
+
+						// Send header indicating HTTP protocol routing
+						header := common.StreamHeader{
+							Protocol: "http",
+							Host:     r.Host,
+						}
+						log.Printf("[Server Proxy] Writing stream header to stream %d: %+v", stream.StreamID(), header)
+						if err := common.WriteJSON(stream, header); err != nil {
+							log.Printf("[Server Proxy] Failed to write stream header: %v", err)
+							stream.Close()
+							return nil, err
+						}
+						log.Printf("[Server Proxy] Stream header written successfully to stream %d", stream.StreamID())
+
+						// Wrap the QUIC stream to satisfy net.Conn
+						return &quicConnWrap{Stream: stream, conn: session.Connection}, nil
+					},
+				},
+			}
+			proxy.ServeHTTP(w, r)
+			return
+		} else if info.RoutingType == "static" {
+			// Serve static files from local disk fallback
+			deployDir := filepath.Join(".", "deployed", subdomainPrefix)
 			if info, err := os.Stat(deployDir); err == nil && info.IsDir() {
 				fs := http.FileServer(http.Dir(deployDir))
 				fs.ServeHTTP(w, r)
@@ -216,47 +348,9 @@ func (s *TunnelServer) startHTTPListeners() {
 			}
 
 			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprintf(w, "Tunnel or static site %s.%s is not online.\n", subdomain, s.Domain)
+			fmt.Fprintf(w, "Static site %s has no active deployments.\n", subdomainPrefix)
 			return
 		}
-
-		// Use a reverse proxy to forward the HTTP request over QUIC
-		proxy := &httputil.ReverseProxy{
-			Director: func(req *http.Request) {
-				req.URL.Scheme = "http"
-				req.URL.Host = r.Host
-			},
-			Transport: &http.Transport{
-				DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-					log.Printf("[Server Proxy] DialContext called, opening QUIC stream to client...")
-					// Open a new QUIC stream for this HTTP request
-					stream, err := session.Connection.OpenStreamSync(ctx)
-					if err != nil {
-						log.Printf("[Server Proxy] Failed to open QUIC stream: %v", err)
-						return nil, err
-					}
-					log.Printf("[Server Proxy] QUIC stream opened (ID: %d)", stream.StreamID())
-
-					// Send header indicating HTTP protocol routing
-					header := common.StreamHeader{
-						Protocol: "http",
-						Host:     r.Host,
-					}
-					log.Printf("[Server Proxy] Writing stream header to stream %d: %+v", stream.StreamID(), header)
-					if err := common.WriteJSON(stream, header); err != nil {
-						log.Printf("[Server Proxy] Failed to write stream header: %v", err)
-						stream.Close()
-						return nil, err
-					}
-					log.Printf("[Server Proxy] Stream header written successfully to stream %d", stream.StreamID())
-
-					// Wrap the QUIC stream to satisfy net.Conn
-					return &quicConnWrap{Stream: stream, conn: session.Connection}, nil
-				},
-			},
-		}
-
-		proxy.ServeHTTP(w, r)
 	})
 
 	// Start Port 80 (HTTP) redirect or proxy server
@@ -440,6 +534,96 @@ func (s *TunnelServer) handleDeploy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("[Server Deploy] Successfully deployed %s to %s", subdomain, deployDir)
+
+	// Register/update subdomain in DB and cache
+	if s.db != nil {
+		subdomainID, err := s.db.GetSubdomainID(subdomain)
+		if err != nil {
+			// Register new static subdomain
+			id, err := s.db.RegisterSubdomain("user_syafri", subdomain, "static", "")
+			if err != nil {
+				log.Printf("[Server Deploy] Failed to register subdomain: %v", err)
+			}
+			subdomainID = id
+		} else {
+			// Update to static routing
+			_, err = s.db.RegisterSubdomain("user_syafri", subdomain, "static", "")
+			if err != nil {
+				log.Printf("[Server Deploy] Failed to update subdomain to static: %v", err)
+			}
+		}
+
+		// Save deployment metadata
+		versionStr := fmt.Sprintf("deploy-%d", time.Now().UnixNano())
+		err = s.db.AddStaticDeployment(subdomainID, subdomain, versionStr)
+		if err != nil {
+			log.Printf("[Server Deploy] Failed to save deployment metadata: %v", err)
+		}
+
+		// Reload cache
+		if err := s.loadRoutesToCache(); err != nil {
+			log.Printf("[Server Deploy] Failed to reload routes to cache: %v", err)
+		}
+	}
+
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Deployment successful!"))
+}
+
+func (s *TunnelServer) Close() {
+	if s.db != nil {
+		s.db.Close()
+	}
+}
+
+func (s *TunnelServer) loadRoutesToCache() error {
+	records, err := s.db.LoadAllSubdomains()
+	if err != nil {
+		return err
+	}
+
+	// Reset route cache
+	s.routeCache.Range(func(key, value interface{}) bool {
+		s.routeCache.Delete(key)
+		return true
+	})
+
+	for _, rec := range records {
+		info := RouteInfo{
+			SubdomainID: rec.ID,
+			UserID:      rec.UserID,
+			Subdomain:   rec.Subdomain,
+			RoutingType:  rec.RoutingType,
+			IsActive:    rec.IsActive,
+		}
+		// Cache by subdomain
+		s.routeCache.Store(strings.ToLower(rec.Subdomain), info)
+		// Cache by custom domain if present
+		if rec.CustomDomain.Valid && rec.CustomDomain.String != "" {
+			s.routeCache.Store(strings.ToLower(rec.CustomDomain.String), info)
+		}
+	}
+	log.Printf("[Server] Loaded %d subdomain configurations into cache.", len(records))
+	return nil
+}
+
+func (s *TunnelServer) IsValidDomainForTLS(domainName string) bool {
+	domainName = strings.ToLower(strings.TrimSpace(domainName))
+	
+	if domainName == strings.ToLower(s.Domain) {
+		return true
+	}
+
+	subdomain := s.extractSubdomain(domainName)
+	lookupKey := domainName
+	if subdomain != "" {
+		lookupKey = subdomain
+	}
+
+	val, found := s.routeCache.Load(lookupKey)
+	if !found {
+		return false
+	}
+	info := val.(RouteInfo)
+	return info.IsActive
 }
