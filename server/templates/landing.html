@@ -399,7 +399,7 @@
             function updateCommand() {
                 const sub = inputSub.value.trim().toLowerCase().replace(/[^a-z0-9\-]/g, "") || "my-site";
                 if (os === "win") {
-                    cmdInput.value = `$ProgressPreference = 'SilentlyContinue'; iwr -useb https://goinstant.my.id/downloads/goinstant-windows.exe -OutFile "$env:TEMP\\goinstant.exe"; &$env:TEMP\\goinstant.exe deploy -subdomain ${sub} .`;
+                    cmdInput.value = `curl.exe -sSL https://goinstant.my.id/downloads/goinstant-windows.exe -o "$env:TEMP\\goinstant.exe"; &$env:TEMP\\goinstant.exe deploy -subdomain ${sub} .`;
                     promptSymbol.innerText = "PS>";
                     osLabel.innerText = "DETECTED OS: WINDOWS (POWERSHELL ONE-LINER)";
                 } else if (os === "mac") {

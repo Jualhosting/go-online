@@ -276,6 +276,13 @@ func zipDirectory(source string) ([]byte, error) {
 			return err
 		}
 
+		if info.IsDir() {
+			name := info.Name()
+			if name == "node_modules" || name == ".git" || name == ".github" || name == ".vscode" || name == ".idea" || name == "tmp" {
+				return filepath.SkipDir
+			}
+		}
+
 		// Get relative path
 		relPath, err := filepath.Rel(source, path)
 		if err != nil {
