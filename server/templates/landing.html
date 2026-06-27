@@ -141,21 +141,22 @@
 <body class="bg-background text-on-surface font-body-md selection:bg-primary-container selection:text-on-primary-container overflow-x-hidden">
 <header class="sticky top-0 z-40 w-full border-b border-outline-variant bg-surface/80 backdrop-blur-md">
 <div class="flex justify-between items-center h-16 px-margin-mobile md:px-margin-desktop max-w-7xl mx-auto">
-<div class="flex items-center gap-sm">
+<div class="flex items-center gap-sm cursor-pointer" onclick="window.location.href='/'">
 <span class="material-symbols-outlined text-secondary text-headline-md" style="font-variation-settings: 'FILL' 1;">bolt</span>
 <span class="font-headline-md text-headline-md font-bold text-on-surface tracking-tight">GoInstant</span>
 </div>
 <nav class="hidden md:flex items-center gap-lg">
-<a class="font-body-sm text-body-sm text-primary font-bold transition-colors" href="#">Home</a>
-<a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Docs</a>
-<a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Status</a>
+<a class="font-body-sm text-body-sm text-primary font-bold transition-colors" href="/">Home</a>
+<a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="/docs">Docs</a>
+<a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="/status">Status</a>
+<a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="/login">Console</a>
 <div class="h-4 w-px bg-outline-variant mx-2"></div>
 <button class="p-sm text-on-surface-variant hover:bg-surface-variant/50 rounded-xl transition-all active:scale-95" id="theme-toggle">
 <span class="material-symbols-outlined">dark_mode</span>
 </button>
-<button class="px-md py-base bg-primary-container text-on-primary-container font-label-caps text-label-caps rounded-xl hover:opacity-90 active:scale-95 transition-all">
+<a href="/dashboard" class="px-md py-1.5 bg-primary-container text-on-primary-container font-label-caps text-label-caps rounded-xl hover:opacity-90 active:scale-95 transition-all">
                     UPGRADE
-                </button>
+</a>
 </nav>
 <button class="md:hidden p-sm text-on-surface">
 <span class="material-symbols-outlined">menu</span>
@@ -248,9 +249,9 @@
 </div>
 <h3 class="font-headline-sm text-headline-md font-bold mb-xs">Windows</h3>
 <p class="font-body-sm text-body-sm text-on-surface-variant mb-lg">x64 / ARM64 MSI &amp; EXE</p>
-<button class="w-full py-sm bg-surface-variant hover:bg-surface-container-high text-on-surface font-label-caps text-label-caps rounded-lg transition-all flex items-center justify-center gap-xs">
+<a href="/downloads/goinstant-windows.exe" class="w-full py-sm bg-surface-variant hover:bg-surface-container-high text-on-surface font-label-caps text-label-caps rounded-lg transition-all flex items-center justify-center gap-xs">
                         DOWNLOAD <span class="material-symbols-outlined text-[16px]">download</span>
-</button>
+</a>
 </div>
 <div class="glass-panel p-lg rounded-xl border-primary bg-primary-container/5 hover:bg-primary-container/10 transition-colors cursor-pointer group">
 <div class="mb-md">
