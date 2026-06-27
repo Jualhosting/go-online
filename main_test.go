@@ -6,6 +6,8 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -136,4 +138,88 @@ func TestMTMTunnelEndToEnd(t *testing.T) {
 		}
 		t.Logf("Inspector verified! Logged request URL: %v", loggedReq["url"])
 	}
+}
+
+func TestMTMTunnelStaticDeployment(t *testing.T) {
+	// Create a temp dir with a mock index.html
+	tempDir := t.TempDir()
+	htmlContent := "Hello from Deploy Static HTML File!"
+	err := os.WriteFile(filepath.Join(tempDir, "index.html"), []byte(htmlContent), 0644)
+	if err != nil {
+		t.Fatalf("failed to write temp html file: %v", err)
+	}
+
+	// 2. Start MTM Server on random ports
+	quicListener, err := net.ListenPacket("udp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to start UDP listener: %v", err)
+	}
+	quicAddrStr := quicListener.LocalAddr().String()
+	quicListener.Close()
+
+	httpListener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to start HTTP listener: %v", err)
+	}
+	httpPort := fmt.Sprintf("%d", httpListener.Addr().(*net.TCPAddr).Port)
+	httpListener.Close()
+
+	httpsListener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to start HTTPS listener: %v", err)
+	}
+	httpsPort := fmt.Sprintf("%d", httpsListener.Addr().(*net.TCPAddr).Port)
+	httpsListener.Close()
+
+	authToken := "test_token_12345"
+	domain := "localhost"
+
+	srv := server.NewTunnelServer(quicAddrStr, domain, authToken, "test@localhost", httpPort, httpsPort)
+	go func() {
+		_ = srv.Start()
+	}()
+	time.Sleep(500 * time.Millisecond)
+
+	// Deploy using runDeploy
+	clientArgs := []string{
+		"-server", quicAddrStr,
+		"-subdomain", "staticapp",
+		"-token", authToken,
+		"-dir", tempDir,
+	}
+
+	os.Setenv("MTM_HTTP_PORT", httpPort)
+	defer os.Unsetenv("MTM_HTTP_PORT")
+	runDeploy(clientArgs)
+
+	// Query the server to get the static content directly (since tunnel is offline, it should serve static file)
+	visitorClient := &http.Client{Timeout: 5 * time.Second}
+	req, err := http.NewRequest("GET", fmt.Sprintf("http://127.0.0.1:%s/", httpPort), nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+	req.Host = "staticapp.localhost"
+
+	resp, err := visitorClient.Do(req)
+	if err != nil {
+		t.Fatalf("visitor HTTP request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected status OK, got %v", resp.Status)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("failed to read response body: %v", err)
+	}
+
+	if string(body) != htmlContent {
+		t.Errorf("expected response body %q, got %q", htmlContent, string(body))
+	}
+	t.Logf("Static deploy test PASSED! Content: %s", string(body))
+
+	// Clean up deployed folder from filesystem
+	os.RemoveAll(filepath.Join(".", "deployed", "staticapp"))
 }

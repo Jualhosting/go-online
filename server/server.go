@@ -1,12 +1,17 @@
 package server
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
 	"net/http/httputil"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -176,6 +181,13 @@ func (s *TunnelServer) startHTTPListeners() {
 	// Create reverse proxy logic
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[Server HTTP] Received request: %s %s (Host: %s)", r.Method, r.URL.Path, r.Host)
+
+		// Handle static deployment endpoint
+		if r.URL.Path == "/api/deploy" && r.Method == http.MethodPost {
+			s.handleDeploy(w, r)
+			return
+		}
+
 		host := r.Host
 		subdomain := s.extractSubdomain(host)
 
@@ -187,8 +199,16 @@ func (s *TunnelServer) startHTTPListeners() {
 
 		session := s.getClient(subdomain)
 		if session == nil {
+			// Check if there's a static deployment
+			deployDir := filepath.Join(".", "deployed", subdomain)
+			if info, err := os.Stat(deployDir); err == nil && info.IsDir() {
+				fs := http.FileServer(http.Dir(deployDir))
+				fs.ServeHTTP(w, r)
+				return
+			}
+
 			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprintf(w, "Tunnel %s.%s is not online.\n", subdomain, s.Domain)
+			fmt.Fprintf(w, "Tunnel or static site %s.%s is not online.\n", subdomain, s.Domain)
 			return
 		}
 
@@ -327,4 +347,91 @@ func (q *quicConnWrap) SetReadDeadline(t time.Time) error {
 
 func (q *quicConnWrap) SetWriteDeadline(t time.Time) error {
 	return q.Stream.SetWriteDeadline(t)
+}
+
+func (s *TunnelServer) handleDeploy(w http.ResponseWriter, r *http.Request) {
+	// Authenticate
+	token := r.Header.Get("Authorization")
+	expectedPrefix := "Bearer "
+	if !strings.HasPrefix(token, expectedPrefix) || token[len(expectedPrefix):] != s.AuthToken {
+		log.Printf("[Server Deploy] Unauthorized deploy attempt")
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	subdomain := r.Header.Get("X-Subdomain")
+	if subdomain == "" {
+		http.Error(w, "Subdomain header missing", http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("[Server Deploy] Receiving deployment for subdomain: %s", subdomain)
+
+	// Read zip file from body
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Failed to read request body", http.StatusInternalServerError)
+		return
+	}
+
+	deployDir := filepath.Join(".", "deployed", subdomain)
+	// Clear old deployment
+	os.RemoveAll(deployDir)
+	if err := os.MkdirAll(deployDir, 0755); err != nil {
+		http.Error(w, "Failed to create deploy directory", http.StatusInternalServerError)
+		return
+	}
+
+	// Unzip the body
+	zipReader, err := zip.NewReader(bytes.NewReader(body), int64(len(body)))
+	if err != nil {
+		http.Error(w, "Invalid zip archive", http.StatusBadRequest)
+		return
+	}
+
+	for _, file := range zipReader.File {
+		path := filepath.Join(deployDir, file.Name)
+		// Prevent path traversal
+		cleanDeployDir := filepath.Clean(deployDir)
+		cleanPath := filepath.Clean(path)
+		if !strings.HasPrefix(cleanPath, cleanDeployDir+string(filepath.Separator)) && cleanPath != cleanDeployDir {
+			continue
+		}
+
+		if file.FileInfo().IsDir() {
+			os.MkdirAll(path, 0755)
+			continue
+		}
+
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			http.Error(w, "Failed to create directory structure", http.StatusInternalServerError)
+			return
+		}
+
+		dstFile, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
+		if err != nil {
+			http.Error(w, "Failed to open destination file", http.StatusInternalServerError)
+			return
+		}
+		
+		srcFile, err := file.Open()
+		if err != nil {
+			dstFile.Close()
+			http.Error(w, "Failed to open zip file member", http.StatusInternalServerError)
+			return
+		}
+
+		if _, err := io.Copy(dstFile, srcFile); err != nil {
+			dstFile.Close()
+			srcFile.Close()
+			http.Error(w, "Failed to extract file contents", http.StatusInternalServerError)
+			return
+		}
+		dstFile.Close()
+		srcFile.Close()
+	}
+
+	log.Printf("[Server Deploy] Successfully deployed %s to %s", subdomain, deployDir)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Deployment successful!"))
 }
