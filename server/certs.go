@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/caddyserver/certmagic"
+	"github.com/libdns/cloudflare"
 )
 
 // GetTLSConfig returns a tls.Config. If the domain is localhost, it generates a self-signed cert.
@@ -31,6 +32,18 @@ func GetTLSConfig(domain string, email string) (*tls.Config, error) {
 	// Configure CertMagic
 	certmagic.DefaultACME.Email = email
 	certmagic.DefaultACME.CA = certmagic.LetsEncryptProductionCA
+
+	// Configure Cloudflare DNS-01 solver if token is provided
+	if cfToken := os.Getenv("CLOUDFLARE_API_TOKEN"); cfToken != "" {
+		log.Println("[TLS] Cloudflare API Token found. Configuring DNS-01 Challenge solver for wildcards...")
+		certmagic.DefaultACME.DNS01Solver = &certmagic.DNS01Solver{
+			DNSManager: certmagic.DNSManager{
+				DNSProvider: &cloudflare.Provider{
+					APIToken: cfToken,
+				},
+			},
+		}
+	}
 
 	storageDir := "./certs"
 	if err := os.MkdirAll(storageDir, 0755); err != nil {

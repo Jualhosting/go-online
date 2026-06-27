@@ -11,6 +11,7 @@ require (
 require (
 	github.com/caddyserver/zerossl v0.1.5 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
+	github.com/libdns/cloudflare v0.2.2 // indirect
 	github.com/libdns/libdns v1.1.1 // indirect
 	github.com/mholt/acmez/v3 v3.1.6 // indirect
 	github.com/miekg/dns v1.1.72 // indirect

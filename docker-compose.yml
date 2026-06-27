@@ -20,6 +20,7 @@ services:
       - MTM_DOMAIN=${MTM_DOMAIN:-localhost}
       - MTM_AUTH_TOKEN=${MTM_AUTH_TOKEN}
       - MTM_ACME_EMAIL=${MTM_ACME_EMAIL}
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
       - MTM_HTTP_PORT=80
       - MTM_HTTPS_PORT=443
     volumes:
