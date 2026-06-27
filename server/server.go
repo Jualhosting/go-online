@@ -179,8 +179,8 @@ func (s *TunnelServer) startHTTPListeners() {
 		subdomain := s.extractSubdomain(host)
 
 		if subdomain == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintln(w, "Bad Request: Missing subdomain")
+			w.Header().Set("Content-Type", "text/html")
+			w.Write([]byte(LandingHTML))
 			return
 		}
 
