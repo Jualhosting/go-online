@@ -313,40 +313,8 @@
 <th class="px-lg py-4 text-right"></th>
 </tr>
 </thead>
-<tbody class="font-code-sm text-code-sm">
-<tr class="border-b border-outline-variant/30 hover:bg-surface-variant/20 transition-colors group">
-<td class="px-lg py-4 text-primary font-bold">CNAME</td>
-<td class="px-lg py-4 text-on-surface">@</td>
-<td class="px-lg py-4 text-on-surface-variant">domains.goinstant.my.id</td>
-<td class="px-lg py-4 text-on-surface-variant">3600</td>
-<td class="px-lg py-4 text-right">
-<button class="opacity-0 group-hover:opacity-100 p-2 hover:bg-surface-container-high rounded transition-all" onclick="copyToClipboard('domains.goinstant.my.id')">
-<span class="material-symbols-outlined text-sm">content_copy</span>
-</button>
-</td>
-</tr>
-<tr class="border-b border-outline-variant/30 hover:bg-surface-variant/20 transition-colors group">
-<td class="px-lg py-4 text-primary font-bold">CNAME</td>
-<td class="px-lg py-4 text-on-surface">www</td>
-<td class="px-lg py-4 text-on-surface-variant">domains.goinstant.my.id</td>
-<td class="px-lg py-4 text-on-surface-variant">3600</td>
-<td class="px-lg py-4 text-right">
-<button class="opacity-0 group-hover:opacity-100 p-2 hover:bg-surface-container-high rounded transition-all" onclick="copyToClipboard('domains.goinstant.my.id')">
-<span class="material-symbols-outlined text-sm">content_copy</span>
-</button>
-</td>
-</tr>
-<tr class="hover:bg-surface-variant/20 transition-colors group">
-<td class="px-lg py-4 text-tertiary font-bold">TXT</td>
-<td class="px-lg py-4 text-on-surface">_goinstant-challenge</td>
-<td class="px-lg py-4 text-on-surface-variant truncate max-w-xs">v=goinstant;uid=662-af92-0129-xxc1</td>
-<td class="px-lg py-4 text-on-surface-variant">60</td>
-<td class="px-lg py-4 text-right">
-<button class="opacity-0 group-hover:opacity-100 p-2 hover:bg-surface-container-high rounded transition-all" onclick="copyToClipboard('v=goinstant;uid=662-af92-0129-xxc1')">
-<span class="material-symbols-outlined text-sm">content_copy</span>
-</button>
-</td>
-</tr>
+<tbody class="font-code-sm text-code-sm" id="user-domains-tbody">
+<!-- Domains loaded dynamically -->
 </tbody>
 </table>
 </div>
@@ -461,5 +429,66 @@
                 setTimeout(() => toast.remove(), 2000);
             });
         }
+
+        // Fix sidebar links
+        document.querySelectorAll('aside nav a').forEach(a => {
+            const text = a.querySelector('span:not(.material-symbols-outlined)').innerText.trim();
+            if (text === 'Dashboard') a.setAttribute('href', '/dashboard');
+            else if (text === 'Domains') a.setAttribute('href', '/domains');
+            else if (text === 'Webhooks') a.setAttribute('href', '/webhooks');
+            else if (text === 'Files') a.setAttribute('href', '/files');
+            else if (text === 'Settings') a.setAttribute('href', '/settings');
+            else if (text === 'Docs') a.setAttribute('href', '/docs');
+            else if (text === 'Status') a.setAttribute('href', '/status');
+        });
+
+        // Load user domains table
+        function loadDomains() {
+            fetch('/api/domains')
+                .then(r => r.json())
+                .then(domains => {
+                    const tbody = document.getElementById('user-domains-tbody');
+                    tbody.innerHTML = '';
+                    if (!domains || domains.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="5" class="px-lg py-4 text-center text-on-surface-variant opacity-60">No domains registered yet. Run goinstant expose or deploy first!</td></tr>';
+                        return;
+                    }
+                    domains.forEach(d => {
+                        const tr = document.createElement('tr');
+                        tr.className = 'border-b border-outline-variant/30 hover:bg-surface-variant/20 transition-colors group';
+                        tr.innerHTML = `
+                            <td class="px-lg py-4 text-primary font-bold">${d.routing_type.toUpperCase()}</td>
+                            <td class="px-lg py-4 text-on-surface select-all">${d.subdomain}.goinstant.my.id</td>
+                            <td class="px-lg py-4 text-on-surface-variant select-all">${d.custom_domain || '<span class="opacity-40">None</span>'}</td>
+                            <td class="px-lg py-4 text-on-surface-variant">${d.is_active ? 'Active' : 'Inactive'}</td>
+                            <td class="px-lg py-4 text-right">
+                                <button class="bg-surface-container-highest hover:bg-primary hover:text-on-primary px-md py-1 rounded text-xs" onclick="promptBindDomain('${d.subdomain}')">Bind CNAME</button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                });
+        }
+
+        window.promptBindDomain = function(subdomain) {
+            const customDomain = prompt("Enter custom domain (e.g. toko-syafri.com):");
+            if (!customDomain) return;
+            fetch('/api/domains/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subdomain: subdomain, custom_domain: customDomain })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Custom domain successfully bound!');
+                    loadDomains();
+                } else {
+                    alert('Failed to bind custom domain: ' + data.error);
+                }
+            });
+        };
+
+        loadDomains();
     </script>
 </body></html>

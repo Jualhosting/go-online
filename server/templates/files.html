@@ -307,74 +307,8 @@
 <span class="text-[10px] bg-secondary/20 text-secondary px-2 py-0.5 rounded-full font-bold">Production Live</span>
 </div>
 <div class="flex-1 overflow-y-auto p-lg">
-<ul class="relative border-l border-outline-variant ml-4 space-y-8">
-<!-- Timeline Entry 1 -->
-<li class="relative pl-8">
-<div class="absolute -left-2 top-0 w-4 h-4 rounded-full bg-secondary ring-4 ring-background"></div>
-<div class="bg-surface-container rounded-lg p-md border border-outline-variant hover:border-primary transition-colors">
-<div class="flex justify-between items-start mb-2">
-<div>
-<span class="font-code-sm text-primary font-bold">v1.24.0-stable</span>
-<p class="font-body-sm text-on-surface mt-1">Updated CSS theme tokens and layout fixes.</p>
-</div>
-<div class="text-right">
-<p class="font-label-caps text-[10px] text-outline">Feb 24, 2024</p>
-<p class="font-label-caps text-[10px] text-outline">14:20 UTC</p>
-</div>
-</div>
-<div class="flex items-center gap-md">
-<div class="flex -space-x-2">
-<div class="w-6 h-6 rounded-full border border-background bg-slate-600"></div>
-<div class="w-6 h-6 rounded-full border border-background bg-slate-400"></div>
-</div>
-<span class="font-code-sm text-xs text-on-surface-variant">Deployed by @dev_martha</span>
-</div>
-</div>
-</li>
-<!-- Timeline Entry 2 -->
-<li class="relative pl-8 opacity-60">
-<div class="absolute -left-2 top-0 w-4 h-4 rounded-full bg-outline ring-4 ring-background"></div>
-<div class="bg-surface-container rounded-lg p-md border border-outline-variant">
-<div class="flex justify-between items-start mb-2">
-<div>
-<span class="font-code-sm text-on-surface-variant">v1.23.9</span>
-<p class="font-body-sm text-on-surface mt-1">Hotfix: Fixed hydration mismatch on mobile.</p>
-</div>
-<div class="text-right">
-<p class="font-label-caps text-[10px] text-outline">Feb 22, 2024</p>
-<p class="font-label-caps text-[10px] text-outline">09:12 UTC</p>
-</div>
-</div>
-<div class="flex items-center justify-between">
-<span class="font-code-sm text-xs text-on-surface-variant">Deployed via CI/CD Pipeline</span>
-<button class="px-md py-1 border border-primary-container text-primary text-xs font-bold rounded hover:bg-primary-container/10 transition-colors uppercase tracking-wider">
-                                            Rollback
-                                        </button>
-</div>
-</div>
-</li>
-<!-- Timeline Entry 3 -->
-<li class="relative pl-8 opacity-60">
-<div class="absolute -left-2 top-0 w-4 h-4 rounded-full bg-outline ring-4 ring-background"></div>
-<div class="bg-surface-container rounded-lg p-md border border-outline-variant">
-<div class="flex justify-between items-start mb-2">
-<div>
-<span class="font-code-sm text-on-surface-variant">v1.23.8</span>
-<p class="font-body-sm text-on-surface mt-1">Initial staging deployment for Q1 features.</p>
-</div>
-<div class="text-right">
-<p class="font-label-caps text-[10px] text-outline">Feb 20, 2024</p>
-<p class="font-label-caps text-[10px] text-outline">21:45 UTC</p>
-</div>
-</div>
-<div class="flex items-center justify-between">
-<span class="font-code-sm text-xs text-on-surface-variant">Deployed by @lead_architect</span>
-<button class="px-md py-1 border border-primary-container text-primary text-xs font-bold rounded hover:bg-primary-container/10 transition-colors uppercase tracking-wider">
-                                            Rollback
-                                        </button>
-</div>
-</div>
-</li>
+<ul class="relative border-l border-outline-variant ml-4 space-y-8" id="deployment-timeline-list">
+<!-- Dynamically loaded timeline -->
 </ul>
 </div>
 </div>
@@ -427,6 +361,56 @@
 </nav>
 </main>
 <script>
+        // Fix sidebar links
+        document.querySelectorAll('aside nav a').forEach(a => {
+            const text = a.querySelector('span:not(.material-symbols-outlined)').innerText.trim();
+            if (text === 'Dashboard') a.setAttribute('href', '/dashboard');
+            else if (text === 'Domains') a.setAttribute('href', '/domains');
+            else if (text === 'Webhooks') a.setAttribute('href', '/webhooks');
+            else if (text === 'Files') a.setAttribute('href', '/files');
+            else if (text === 'Settings') a.setAttribute('href', '/settings');
+            else if (text === 'Docs') a.setAttribute('href', '/docs');
+            else if (text === 'Status') a.setAttribute('href', '/status');
+        });
+
+        // Load deployment files/history
+        fetch('/api/files')
+          .then(r => r.json())
+          .then(files => {
+              const list = document.getElementById('deployment-timeline-list');
+              list.innerHTML = '';
+              if (!files || files.length === 0) {
+                  list.innerHTML = '<li class="pl-8 text-on-surface-variant font-code-sm">No static deployments found. Deploy your first directory with goinstant deploy!</li>';
+                  return;
+              }
+              files.forEach((f, idx) => {
+                  const li = document.createElement('li');
+                  li.className = `relative pl-8 ${idx > 0 ? 'opacity-60' : ''}`;
+                  li.innerHTML = `
+                      <div class="absolute -left-2 top-0 w-4 h-4 rounded-full bg-secondary ring-4 ring-background"></div>
+                      <div class="bg-surface-container rounded-lg p-md border border-outline-variant hover:border-primary transition-colors">
+                          <div class="flex justify-between items-start mb-2">
+                              <div>
+                                  <span class="font-code-sm text-primary font-bold">Key: ${f.key}</span>
+                                  <p class="font-body-sm text-on-surface mt-1">Size: ${(f.size / 1024).toFixed(2)} KB</p>
+                              </div>
+                              <div class="text-right">
+                                  <p class="font-label-caps text-[10px] text-outline">Modified</p>
+                                  <p class="font-label-caps text-[10px] text-outline">${new Date(f.last_modified).toLocaleDateString()}</p>
+                              </div>
+                          </div>
+                          <div class="flex items-center justify-between">
+                              <span class="font-code-sm text-xs text-on-surface-variant">Storage Provider: Cloudflare R2</span>
+                              <a href="${f.url}" target="_blank" class="px-md py-1 border border-primary-container text-primary text-xs font-bold rounded hover:bg-primary-container/10 transition-colors uppercase tracking-wider">
+                                  Download File
+                              </a>
+                          </div>
+                      </div>
+                  `;
+                  list.appendChild(li);
+              });
+          });
+
         // Micro-interaction for Terminal
         document.addEventListener('keydown', function(e) {
             if (e.metaKey && e.key === 'j') {

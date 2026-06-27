@@ -267,12 +267,27 @@
     tabSignIn.addEventListener('click', () => setActiveTab(tabSignIn, tabCreate));
     tabCreate.addEventListener('click', () => setActiveTab(tabCreate, tabSignIn));
 
-    // Form Submission Mock Flow
+    // Form Submission Flow
     loginForm.addEventListener('submit', (e) => {
       e.preventDefault();
-      signInView.classList.add('hidden');
-      mfaView.classList.remove('hidden');
-      document.querySelector('.bg-surface-container-low').classList.add('opacity-30', 'pointer-events-none');
+      const tokenInput = loginForm.querySelector('input[type="password"]').value;
+
+      fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: tokenInput })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          window.location.href = '/dashboard';
+        } else {
+          alert('Login failed: Invalid API Token');
+        }
+      })
+      .catch(err => {
+        alert('Authentication error: ' + err);
+      });
     });
 
     backToLogin.addEventListener('click', () => {

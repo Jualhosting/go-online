@@ -3,107 +3,105 @@
 <html class="dark" lang="en"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>GoInstant Webhook Inspector</title>
+<title>GoInstant | Webhook Inspector</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@450;600&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=JetBrains+Mono:wght@100..900&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@450;600&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <script id="tailwind-config">
       tailwind.config = {
         darkMode: "class",
         theme: {
           extend: {
             "colors": {
-                    "error-container": "#93000a",
-                    "on-secondary-fixed": "#002113",
-                    "on-tertiary-fixed-variant": "#930013",
-                    "on-tertiary-fixed": "#410004",
-                    "tertiary": "#ffb3ad",
-                    "inverse-on-surface": "#263143",
-                    "error": "#ffb4ab",
-                    "on-secondary-container": "#00311f",
-                    "on-error-container": "#ffdad6",
-                    "primary-container": "#4f46e5",
-                    "secondary-container": "#00a572",
-                    "surface-dim": "#081425",
-                    "on-primary-fixed-variant": "#3323cc",
-                    "surface-container-lowest": "#040e1f",
-                    "on-surface": "#d8e3fb",
-                    "secondary": "#4edea3",
-                    "on-primary": "#1d00a5",
-                    "surface-container-low": "#111c2d",
-                    "outline-variant": "#464555",
-                    "on-secondary-fixed-variant": "#005236",
-                    "secondary-fixed": "#6ffbbe",
-                    "secondary-fixed-dim": "#4edea3",
-                    "on-tertiary-container": "#ffd0cc",
-                    "surface-container": "#152031",
-                    "on-background": "#d8e3fb",
-                    "tertiary-fixed-dim": "#ffb3ad",
-                    "outline": "#918fa1",
-                    "on-primary-container": "#dad7ff",
-                    "on-error": "#690005",
-                    "tertiary-fixed": "#ffdad7",
-                    "primary-fixed": "#e2dfff",
-                    "inverse-primary": "#4d44e3",
-                    "surface-tint": "#c3c0ff",
-                    "tertiary-container": "#bc1d25",
-                    "on-surface-variant": "#c7c4d8",
-                    "inverse-surface": "#d8e3fb",
-                    "surface-variant": "#2a3548",
-                    "on-secondary": "#003824",
-                    "surface-container-high": "#1f2a3c",
-                    "surface": "#081425",
-                    "surface-container-highest": "#2a3548",
-                    "surface-bright": "#2f3a4c",
-                    "on-tertiary": "#68000a",
-                    "on-primary-fixed": "#0f0069",
-                    "primary": "#c3c0ff",
-                    "primary-fixed-dim": "#c3c0ff",
-                    "background": "#081425"
+                "primary-fixed-dim": "#c3c0ff",
+                "outline-variant": "#464555",
+                "surface-container-lowest": "#040e1f",
+                "background": "#081425",
+                "secondary": "#4edea3",
+                "on-surface": "#d8e3fb",
+                "on-primary-container": "#dad7ff",
+                "inverse-surface": "#d8e3fb",
+                "primary-container": "#4f46e5",
+                "secondary-fixed": "#6ffbbe",
+                "tertiary": "#ffb3ad",
+                "primary-fixed": "#e2dfff",
+                "on-tertiary-container": "#ffd0cc",
+                "on-tertiary": "#68000a",
+                "on-tertiary-fixed-variant": "#930013",
+                "on-primary-fixed": "#0f0069",
+                "error-container": "#93000a",
+                "on-secondary-fixed": "#002113",
+                "surface-container": "#152031",
+                "inverse-primary": "#4d44e3",
+                "surface-variant": "#2a3548",
+                "tertiary-container": "#bc1d25",
+                "surface-bright": "#2f3a4c",
+                "surface": "#081425",
+                "tertiary-fixed": "#ffdad7",
+                "on-secondary-fixed-variant": "#005236",
+                "surface-tint": "#c3c0ff",
+                "on-tertiary-fixed": "#410004",
+                "primary": "#c3c0ff",
+                "on-surface-variant": "#c7c4d8",
+                "on-error": "#690005",
+                "secondary-container": "#00a572",
+                "on-primary": "#1d00a5",
+                "on-secondary": "#003824",
+                "on-error-container": "#ffdad6",
+                "on-secondary-container": "#00311f",
+                "surface-dim": "#081425",
+                "inverse-on-surface": "#263143",
+                "tertiary-fixed-dim": "#ffb3ad",
+                "outline": "#918fa1",
+                "secondary-fixed-dim": "#4edea3",
+                "error": "#ffb4ab",
+                "on-primary-fixed-variant": "#3323cc",
+                "surface-container-low": "#111c2d",
+                "surface-container-highest": "#2a3548",
+                "surface-container-high": "#1f2a3c",
+                "on-background": "#d8e3fb"
             },
             "borderRadius": {
-                    "DEFAULT": "0.125rem",
-                    "lg": "0.25rem",
-                    "xl": "0.5rem",
-                    "full": "0.75rem"
+                "DEFAULT": "0.125rem",
+                "lg": "0.25rem",
+                "xl": "0.5rem",
+                "full": "0.75rem"
             },
             "spacing": {
-                    "xl": "32px",
-                    "margin-desktop": "32px",
-                    "sidebar-collapsed": "64px",
-                    "margin-mobile": "16px",
-                    "sm": "8px",
-                    "md": "16px",
-                    "lg": "24px",
-                    "base": "4px",
-                    "sidebar-width": "260px",
-                    "xs": "4px",
-                    "gutter": "24px"
+                "lg": "24px",
+                "base": "4px",
+                "xs": "4px",
+                "sidebar-collapsed": "64px",
+                "xl": "32px",
+                "margin-desktop": "32px",
+                "sm": "8px",
+                "margin-mobile": "16px",
+                "sidebar-width": "260px",
+                "gutter": "24px",
+                "md": "16px"
             },
             "fontFamily": {
-                    "label-caps": ["JetBrains Mono"],
-                    "body-lg": ["Inter"],
-                    "code-sm": ["JetBrains Mono"],
-                    "body-sm": ["Inter"],
-                    "code-md": ["JetBrains Mono"],
-                    "headline-lg": ["Inter"],
-                    "headline-lg-mobile": ["Inter"],
-                    "headline-md": ["Inter"],
-                    "body-md": ["Inter"],
-                    "display-lg": ["Inter"]
+                "label-caps": ["JetBrains Mono"],
+                "display-lg": ["Inter"],
+                "code-md": ["JetBrains Mono"],
+                "headline-md": ["Inter"],
+                "body-sm": ["Inter"],
+                "headline-lg-mobile": ["Inter"],
+                "body-md": ["Inter"],
+                "body-lg": ["Inter"],
+                "code-sm": ["JetBrains Mono"],
+                "headline-lg": ["Inter"]
             },
             "fontSize": {
-                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
-                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
-                    "code-sm": ["12px", {"lineHeight": "18px", "fontWeight": "450"}],
-                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
-                    "code-md": ["14px", {"lineHeight": "22px", "fontWeight": "450"}],
-                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
-                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
-                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
-                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
-                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+                "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                "code-md": ["14px", {"lineHeight": "22px", "fontWeight": "450"}],
+                "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                "code-sm": ["12px", {"lineHeight": "18px", "fontWeight": "450"}],
+                "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
             }
           },
         },
@@ -119,4 +117,372 @@
         .custom-scrollbar::-webkit-scrollbar {
             width: 4px;
         }
-        .custom-scrollbar::-webkit-</style></head><body></body></html>
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #464555;
+            border-radius: 10px;
+        }
+        .terminal-glow {
+            box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.5);
+        }
+        .json-key { color: #c3c0ff; }
+        .json-string { color: #4edea3; }
+        .json-number { color: #ffb3ad; }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md overflow-hidden h-screen flex">
+<!-- SideNavBar (from COMPONENTS_3) -->
+<aside class="fixed left-0 top-0 h-screen w-sidebar-width border-r border-outline-variant bg-surface hidden md:flex flex-col py-lg z-50">
+<div class="px-md mb-xl flex flex-col">
+<span class="font-headline-md text-headline-md font-bold text-on-surface">GoInstant</span>
+<span class="text-xs text-on-surface-variant font-body-sm">Developer Platform</span>
+</div>
+<nav class="flex-1 flex flex-col gap-xs overflow-y-auto">
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-variant/50 transition-colors cursor-pointer" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-body-sm text-body-sm">Dashboard</span>
+</a>
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-variant/50 transition-colors cursor-pointer" href="#">
+<span class="material-symbols-outlined">language</span>
+<span class="font-body-sm text-body-sm">Domains</span>
+</a>
+<a class="flex items-center gap-sm px-md py-sm text-primary border-l-2 border-primary bg-primary-container/10 transition-colors cursor-pointer" href="#">
+<span class="material-symbols-outlined">webhook</span>
+<span class="font-body-sm text-body-sm">Webhooks</span>
+</a>
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-variant/50 transition-colors cursor-pointer" href="#">
+<span class="material-symbols-outlined">folder_open</span>
+<span class="font-body-sm text-body-sm">Files</span>
+</a>
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-variant/50 transition-colors cursor-pointer" href="#">
+<span class="material-symbols-outlined">groups</span>
+<span class="font-body-sm text-body-sm">Team</span>
+</a>
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-variant/50 transition-colors cursor-pointer" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-body-sm text-body-sm">Billing</span>
+</a>
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-variant/50 transition-colors cursor-pointer" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-body-sm text-body-sm">Settings</span>
+</a>
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-variant/50 transition-colors cursor-pointer" href="#">
+<span class="material-symbols-outlined">description</span>
+<span class="font-body-sm text-body-sm">Docs</span>
+</a>
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-variant/50 transition-colors cursor-pointer" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-body-sm text-body-sm">Status</span>
+</a>
+</nav>
+<div class="px-md pt-lg mt-auto flex flex-col gap-sm border-t border-outline-variant">
+<button class="bg-primary-container text-on-primary-container px-md py-sm text-label-caps font-label-caps rounded flex items-center justify-center gap-xs">
+                Documentation
+            </button>
+<div class="flex items-center justify-between text-on-surface-variant py-sm">
+<span class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors">dark_mode</span>
+<span class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors">help</span>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col ml-0 md:ml-sidebar-width h-screen overflow-hidden">
+<!-- TopAppBar (from COMPONENTS_3) -->
+<header class="sticky top-0 z-40 w-full border-b border-outline-variant bg-surface/80 backdrop-blur-md flex justify-between items-center h-16 px-margin-desktop">
+<div class="flex items-center gap-md flex-1">
+<div class="relative w-full max-w-md hidden md:block">
+<span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full bg-surface-container border border-outline-variant rounded-lg pl-xl pr-md py-xs font-body-sm text-on-surface focus:outline-none focus:border-primary transition-colors" placeholder="Search webhooks..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<button class="text-on-surface-variant hover:text-primary transition-colors font-body-sm">Upgrade</button>
+<button class="bg-primary text-on-primary px-md py-1.5 rounded-lg font-label-caps text-label-caps hover:opacity-90 active:scale-95 transition-all">New Project</button>
+<div class="flex items-center gap-sm pl-md border-l border-outline-variant">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary">help</span>
+<div class="h-8 w-8 rounded-full bg-surface-container-highest border border-outline overflow-hidden">
+<img alt="User Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDNY3xRyTXBvvrVRyoOJPMoAPL1XmnvLaZ4GQC60a8SiaSr36GxgdhgWo-pfvC9ATHwgEFgp2TmuTayvKUEUZ_FTXG7s43vzJQ3WQIbdE48Q36kM3uhCPtBKxfURXdA8w0cuu-wp2dCkUu4o4uWAclK5OPMNe51O25uvZDXDWVnDcBNpxFx2If1Dc-iJnxvhJg_4pD37IlzrfsH8Dxn24U7CzNTVd4QIDhBZQTVvgu7_pGA-_RG4s1pGLXnxAwkQV3h-yTCmwBtlRA"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Webhook Header -->
+<div class="px-margin-desktop py-md border-b border-outline-variant bg-surface-container-low">
+<nav class="flex items-center gap-xs font-code-sm text-xs text-on-surface-variant mb-xs">
+<span>Projects</span>
+<span class="material-symbols-outlined text-xs">chevron_right</span>
+<span>go-instant-web</span>
+<span class="material-symbols-outlined text-xs">chevron_right</span>
+<span class="text-primary">webhooks</span>
+</nav>
+<div class="flex items-center justify-between">
+<div>
+<h1 class="text-headline-md font-headline-md text-on-surface">Webhook Inspector</h1>
+<div class="flex items-center gap-sm mt-1">
+<div class="flex items-center gap-xs">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-secondary"></span>
+</span>
+<span class="text-xs font-code-sm text-secondary uppercase tracking-wider">Live Stream Active</span>
+</div>
+<span class="text-outline text-xs">•</span>
+<span class="text-xs text-on-surface-variant font-body-sm">Listening on <code class="bg-surface-container-high px-1 rounded text-primary">/hooks/stripe-prod</code></span>
+</div>
+</div>
+<div class="flex gap-sm">
+<button class="bg-surface-container border border-outline-variant px-md py-sm font-label-caps text-label-caps text-on-surface rounded hover:bg-surface-container-high transition-colors flex items-center gap-xs">
+<span class="material-symbols-outlined text-[18px]">settings</span> Config
+                    </button>
+<button class="bg-error-container/20 text-error border border-error/20 px-md py-sm font-label-caps text-label-caps rounded hover:bg-error-container/30 transition-colors">
+                        Clear Feed
+                    </button>
+</div>
+</div>
+</div>
+<!-- Master-Detail Content Split -->
+<div class="flex-1 flex overflow-hidden">
+<!-- Left Stream Panel -->
+<section class="w-1/3 min-w-[320px] max-w-[480px] border-r border-outline-variant flex flex-col bg-surface-container-lowest">
+<div class="px-md py-sm bg-surface-container border-b border-outline-variant flex items-center justify-between">
+<span class="text-label-caps font-label-caps text-on-surface-variant uppercase">Request Log</span>
+<span class="text-xs font-code-sm text-outline">v2.4.0</span>
+</div>
+<div class="flex-1 overflow-y-auto custom-scrollbar" id="webhook-logs-list">
+<!-- Stream Item: Active/Selected -->
+<div class="p-md border-b border-primary/30 bg-primary-container/10 cursor-pointer hover:bg-primary-container/20 transition-colors border-l-4 border-l-primary">
+<div class="flex justify-between items-start mb-xs">
+<span class="font-code-sm text-[13px] text-on-surface">POST /hooks/stripe-prod</span>
+<span class="px-2 py-0.5 rounded bg-secondary/10 text-secondary text-[10px] font-bold border border-secondary/20">200 OK</span>
+</div>
+<div class="flex justify-between items-center text-[11px] font-body-sm text-on-surface-variant">
+<span class="font-code-sm">id: evt_1O9j2vL...</span>
+<span>Just now</span>
+</div>
+</div>
+<!-- Stream Item -->
+<div class="p-md border-b border-outline-variant/30 cursor-pointer hover:bg-surface-container transition-colors">
+<div class="flex justify-between items-start mb-xs">
+<span class="font-code-sm text-[13px] text-on-surface">POST /hooks/whatsapp</span>
+<span class="px-2 py-0.5 rounded bg-secondary/10 text-secondary text-[10px] font-bold border border-secondary/20">200 OK</span>
+</div>
+<div class="flex justify-between items-center text-[11px] font-body-sm text-on-surface-variant">
+<span class="font-code-sm">wa_id: 447700900...</span>
+<span>2 min ago</span>
+</div>
+</div>
+<!-- Stream Item: Error -->
+<div class="p-md border-b border-outline-variant/30 cursor-pointer hover:bg-surface-container transition-colors bg-error-container/5">
+<div class="flex justify-between items-start mb-xs">
+<span class="font-code-sm text-[13px] text-on-surface">POST /hooks/stripe-prod</span>
+<span class="px-2 py-0.5 rounded bg-error/10 text-error text-[10px] font-bold border border-error/20">500 ERR</span>
+</div>
+<div class="flex justify-between items-center text-[11px] font-body-sm text-on-surface-variant">
+<span class="font-code-sm">id: evt_1O9h8xR...</span>
+<span>5 min ago</span>
+</div>
+</div>
+<!-- Stream Item -->
+<div class="p-md border-b border-outline-variant/30 cursor-pointer hover:bg-surface-container transition-colors">
+<div class="flex justify-between items-start mb-xs">
+<span class="font-code-sm text-[13px] text-on-surface">POST /hooks/github</span>
+<span class="px-2 py-0.5 rounded bg-secondary/10 text-secondary text-[10px] font-bold border border-secondary/20">200 OK</span>
+</div>
+<div class="flex justify-between items-center text-[11px] font-body-sm text-on-surface-variant">
+<span class="font-code-sm">push_id: 1289045...</span>
+<span>12 min ago</span>
+</div>
+</div>
+<!-- Mock scrolling items -->
+<div class="p-md border-b border-outline-variant/30 opacity-60">
+<div class="flex justify-between items-start mb-xs">
+<span class="font-code-sm text-[13px]">POST /hooks/clerk</span>
+<span class="px-2 py-0.5 rounded bg-secondary/10 text-secondary text-[10px] font-bold opacity-50">200 OK</span>
+</div>
+<div class="flex justify-between items-center text-[11px] font-body-sm">
+<span class="font-code-sm">user_id: user_2Zl...</span>
+<span>45 min ago</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Right Detail View Panel -->
+<section class="flex-1 overflow-y-auto custom-scrollbar bg-background p-lg terminal-glow">
+<div class="max-w-4xl mx-auto space-y-lg">
+<div class="flex items-center justify-between sticky top-0 bg-background/80 backdrop-blur-sm py-2 z-10 border-b border-outline-variant mb-lg">
+<div class="flex items-center gap-md">
+<div class="p-sm bg-primary-container/20 rounded border border-primary/20">
+<span class="material-symbols-outlined text-primary">data_object</span>
+</div>
+<div>
+<h2 class="font-headline-md text-body-lg font-bold" id="detail-request-title">Request Detail</h2>
+<p class="text-xs text-on-surface-variant font-code-sm" id="detail-request-id">ID: <span>None</span></p>
+</div>
+</div>
+<button id="replay-btn" class="bg-primary-container text-on-primary-container px-lg py-sm font-label-caps text-label-caps rounded-lg hover:brightness-110 active:scale-95 transition-all flex items-center gap-sm shadow-lg shadow-primary/20">
+                            🚀 Replay Request
+                        </button>
+</div>
+<!-- Section: Headers -->
+<div>
+<div class="flex items-center gap-xs mb-sm">
+<span class="material-symbols-outlined text-sm text-on-surface-variant">list</span>
+<h3 class="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-widest">HTTP Headers</h3>
+</div>
+<div class="bg-surface-container rounded-xl overflow-hidden border border-outline-variant">
+<table class="w-full text-left font-code-sm text-[13px]">
+<tbody class="divide-y divide-outline-variant/30" id="detail-headers-tbody">
+<!-- Headers loaded dynamically -->
+</tbody>
+</table>
+</div>
+</div>
+<!-- Section: Payload Body -->
+<div>
+<div class="flex items-center justify-between mb-sm">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-sm text-on-surface-variant">terminal</span>
+<h3 class="text-label-caps font-label-caps text-on-surface-variant uppercase tracking-widest">Request Body</h3>
+</div>
+<button class="text-[11px] font-code-sm text-primary hover:underline flex items-center gap-xs">
+<span class="material-symbols-outlined text-[14px]">content_copy</span> Copy Raw
+                            </button>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md font-code-md text-[14px] leading-relaxed relative terminal-glow">
+<div class="absolute top-2 right-2 flex gap-1">
+<div class="w-2 h-2 rounded-full bg-error/40"></div>
+<div class="w-2 h-2 rounded-full bg-tertiary/40"></div>
+<div class="w-2 h-2 rounded-full bg-secondary/40"></div>
+</div>
+<pre class="overflow-x-auto"><code class="block whitespace-pre" id="detail-body-pre">{
+  "status": "No webhook logs present"
+}</code></pre>
+</div>
+</div>
+<!-- Footer Info -->
+<div class="pt-lg border-t border-outline-variant flex justify-between items-center text-xs text-on-surface-variant font-body-sm">
+<div class="flex items-center gap-md">
+<span>Processing time: <strong class="text-secondary">42ms</strong></span>
+<span>Destination: <strong class="text-on-surface">Worker-US-East (v4)</strong></span>
+</div>
+<span class="opacity-50 italic">Listening since 2023-11-24 09:00:00 UTC</span>
+</div>
+</div>
+</section>
+</div>
+</div>
+<!-- Mobile Overlay Alert (Optional) -->
+    let selectedLog = null;
+    let webhooksList = [];
+
+    // Fix sidebar links
+    document.querySelectorAll('aside nav a').forEach(a => {
+        const text = a.querySelector('span:not(.material-symbols-outlined)').innerText.trim();
+        if (text === 'Dashboard') a.setAttribute('href', '/dashboard');
+        else if (text === 'Domains') a.setAttribute('href', '/domains');
+        else if (text === 'Webhooks') a.setAttribute('href', '/webhooks');
+        else if (text === 'Files') a.setAttribute('href', '/files');
+        else if (text === 'Settings') a.setAttribute('href', '/settings');
+        else if (text === 'Docs') a.setAttribute('href', '/docs');
+        else if (text === 'Status') a.setAttribute('href', '/status');
+    });
+
+    function loadWebhooks() {
+        fetch('/api/webhooks')
+            .then(r => r.json())
+            .then(data => {
+                webhooksList = data || [];
+                renderLogsList();
+                if (webhooksList.length > 0 && !selectedLog) {
+                    selectLog(webhooksList[0].id);
+                }
+            });
+    }
+
+    function renderLogsList() {
+        const container = document.getElementById('webhook-logs-list');
+        container.innerHTML = '';
+        if (webhooksList.length === 0) {
+            container.innerHTML = '<div class="p-md text-center text-on-surface-variant opacity-60 font-code-sm">No webhook payloads logged yet. Trigger traffic to your exposed ports!</div>';
+            return;
+        }
+
+        webhooksList.forEach(w => {
+            const item = document.createElement('div');
+            const isSelected = selectedLog && selectedLog.id === w.id;
+            item.className = `p-md border-b cursor-pointer transition-colors ${
+                isSelected 
+                    ? 'border-primary/30 bg-primary-container/10 border-l-4 border-l-primary text-on-surface' 
+                    : 'border-outline-variant/30 hover:bg-surface-container text-on-surface-variant'
+            }`;
+            item.onclick = () => selectLog(w.id);
+            
+            item.innerHTML = `
+                <div class="flex justify-between items-start mb-xs">
+                    <span class="font-code-sm text-[13px] font-semibold">${w.method} ${w.url}</span>
+                    <span class="px-2 py-0.5 rounded bg-secondary/10 text-secondary text-[10px] font-bold border border-secondary/20">200 OK</span>
+                </div>
+                <div class="flex justify-between items-center text-[11px] font-body-sm">
+                    <span class="font-code-sm">${w.subdomain}.goinstant.my.id</span>
+                    <span>Just now</span>
+                </div>
+            `;
+            container.appendChild(item);
+        });
+    }
+
+    function selectLog(id) {
+        const logItem = webhooksList.find(w => w.id === id);
+        if (!logItem) return;
+        selectedLog = logItem;
+        renderLogsList();
+
+        document.getElementById('detail-request-title').innerText = `${selectedLog.method} ${selectedLog.url}`;
+        document.getElementById('detail-request-id').innerText = `ID: wl_${selectedLog.id}`;
+
+        const headersTable = document.getElementById('detail-headers-tbody');
+        headersTable.innerHTML = '';
+        let headersObj = {};
+        try {
+            headersObj = JSON.parse(selectedLog.headers);
+        } catch(e) {}
+
+        for (let k in headersObj) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="px-md py-2.5 text-primary-fixed-dim bg-surface-container-high w-1/3">${k}</td>
+                <td class="px-md py-2.5 text-on-surface break-all">${headersObj[k].join(', ')}</td>
+            `;
+            headersTable.appendChild(tr);
+        }
+
+        document.getElementById('detail-body-pre').innerText = selectedLog.body;
+    }
+
+    document.getElementById('replay-btn').onclick = function() {
+        if (!selectedLog) {
+            alert('No webhook selected');
+            return;
+        }
+        fetch('/api/webhooks/replay', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: selectedLog.id })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('Webhook request payload successfully replayed to your local server!');
+            } else {
+                alert('Replay failed: ' + data.error);
+            }
+        });
+    };
+
+    loadWebhooks();
+    setInterval(loadWebhooks, 3000);
+    </script>
+</body></html>

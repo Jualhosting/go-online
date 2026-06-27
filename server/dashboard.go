@@ -3,7 +3,10 @@ package server
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
 	"embed"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -49,6 +52,8 @@ func (s *TunnelServer) RegisterDashboardRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/files", s.authAPI(s.handleAPIFiles))
 	mux.HandleFunc("/api/audit", s.authAPI(s.handleAPIAudit))
 	mux.HandleFunc("/api/analytics", s.authAPI(s.handleAPIAnalytics))
+	mux.HandleFunc("/api/billing/upgrade", s.authAPI(s.handleAPIBillingUpgrade))
+	mux.HandleFunc("/webhook/payment", s.handleWebhookPayment)
 }
 
 func (s *TunnelServer) handleLandingRoute(w http.ResponseWriter, r *http.Request) {
@@ -620,4 +625,184 @@ func (s *TunnelServer) handleClientTraffic(w http.ResponseWriter, r *http.Reques
 			w.WriteHeader(http.StatusNotFound)
 		}
 	}
+}
+
+func (s *TunnelServer) handleAPIBillingUpgrade(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	userID := s.getUserFromSession(r)
+	if userID == "" {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var req struct {
+		ChannelCode string `json:"channel_code"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	apiKey := os.Getenv("PAYMENKU_API_KEY")
+	if apiKey == "" {
+		http.Error(w, "Paymenku API key is not configured in environment variables", http.StatusInternalServerError)
+		return
+	}
+
+	referenceID := fmt.Sprintf("INV-%d", time.Now().UnixNano())
+	amount := 50000.0 // Rp 50,000 for PRO plan
+
+	paymenkuReq := map[string]interface{}{
+		"channel_code":   req.ChannelCode,
+		"amount":         amount,
+		"reference_id":   referenceID,
+		"customer_name":  userID,
+		"customer_email": fmt.Sprintf("%s@goinstant.my.id", userID),
+		"return_url":     "https://goinstant.my.id/dashboard",
+	}
+
+	payloadBytes, err := json.Marshal(paymenkuReq)
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	httpReq, err := http.NewRequest("POST", "https://paymenku.com/api/v1/transaction/create", bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	httpReq.Header.Set("Authorization", "Bearer "+apiKey)
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		http.Error(w, "Failed to connect to payment gateway: "+err.Error(), http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+
+	respBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		http.Error(w, "Failed to read gateway response", http.StatusInternalServerError)
+		return
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		http.Error(w, fmt.Sprintf("Payment gateway error (status %d): %s", resp.StatusCode, string(respBytes)), http.StatusBadGateway)
+		return
+	}
+
+	var paymenkuResp struct {
+		Status string `json:"status"`
+		Data   struct {
+			TrxID       string      `json:"trx_id"`
+			ReferenceID string      `json:"reference_id"`
+			Amount      string      `json:"amount"`
+			Status      string      `json:"status"`
+			PayURL      string      `json:"pay_url"`
+			PaymentInfo interface{} `json:"payment_info"`
+		} `json:"data"`
+	}
+
+	if err := json.Unmarshal(respBytes, &paymenkuResp); err != nil {
+		http.Error(w, "Failed to parse gateway response", http.StatusInternalServerError)
+		return
+	}
+
+	paymentInfoBytes, _ := json.Marshal(paymenkuResp.Data.PaymentInfo)
+
+	err = s.db.CreateBillingTransaction(
+		userID,
+		referenceID,
+		paymenkuResp.Data.TrxID,
+		amount,
+		req.ChannelCode,
+		"pending",
+		string(paymentInfoBytes),
+	)
+	if err != nil {
+		http.Error(w, "Failed to save transaction to database: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	_ = s.db.LogAuditEvent(userID, "billing.upgrade_started", fmt.Sprintf("Upgrade to PRO via %s started, Reference: %s", req.ChannelCode, referenceID))
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(respBytes)
+}
+
+func (s *TunnelServer) handleWebhookPayment(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	signature := r.Header.Get("X-PaymenKu-Signature")
+	timestamp := r.Header.Get("X-PaymenKu-Timestamp")
+
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		return
+	}
+
+	webhookSecret := os.Getenv("PAYMENKU_WEBHOOK_SECRET")
+	if webhookSecret == "" {
+		webhookSecret = "814f8477c0d0b615b06ea9879cfb0d99ef9f26b22a7038b65d71e1948843e8da"
+	}
+
+	mac := hmac.New(sha256.New, []byte(webhookSecret))
+	mac.Write([]byte(timestamp + "." + string(bodyBytes)))
+	expectedSignature := hex.EncodeToString(mac.Sum(nil))
+
+	if signature != expectedSignature {
+		log.Printf("[Webhook Payment] Signature mismatch. Got: %s, Expected: %s", signature, expectedSignature)
+		http.Error(w, "Invalid signature", http.StatusUnauthorized)
+		return
+	}
+
+	var payload struct {
+		Event       string `json:"event"`
+		TrxID       string `json:"trx_id"`
+		ReferenceID string `json:"reference_id"`
+		Status      string `json:"status"`
+		Amount      string `json:"amount"`
+	}
+
+	if err := json.Unmarshal(bodyBytes, &payload); err != nil {
+		http.Error(w, "Failed to parse body", http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("[Webhook Payment] Received event: %s for Trx: %s Reference: %s Status: %s", payload.Event, payload.TrxID, payload.ReferenceID, payload.Status)
+
+	if payload.Status == "paid" {
+		userID, err := s.db.UpdateBillingTransactionStatus(payload.ReferenceID, "paid")
+		if err != nil {
+			log.Printf("[Webhook Payment] Failed to update transaction status in DB: %v", err)
+			http.Error(w, "Transaction not found", http.StatusNotFound)
+			return
+		}
+
+		err = s.db.UpdateUserPlan(userID, "pro")
+		if err != nil {
+			log.Printf("[Webhook Payment] Failed to update user plan to PRO in DB: %v", err)
+			http.Error(w, "Failed to upgrade user", http.StatusInternalServerError)
+			return
+		}
+
+		_ = s.db.LogAuditEvent(userID, "billing.upgrade_completed", fmt.Sprintf("Upgrade to PRO via Paymenku completed. Trx: %s", payload.TrxID))
+		log.Printf("[Webhook Payment] User %s successfully upgraded to PRO!", userID)
+	} else {
+		_, _ = s.db.UpdateBillingTransactionStatus(payload.ReferenceID, payload.Status)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"status":"success"}`))
 }

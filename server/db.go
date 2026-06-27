@@ -95,6 +95,19 @@ func (m *DBManager) migrate() error {
 			details TEXT NOT NULL,
 			logged_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		);`,
+		`CREATE TABLE IF NOT EXISTS billing_transactions (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id TEXT NOT NULL,
+			reference_id TEXT UNIQUE NOT NULL,
+			trx_id TEXT,
+			amount REAL NOT NULL,
+			channel_code TEXT NOT NULL,
+			status TEXT NOT NULL DEFAULT 'pending',
+			payment_info TEXT,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY(user_id) REFERENCES users(id)
+		);`,
 	}
 
 	for _, query := range queries {
@@ -269,5 +282,32 @@ func (m *DBManager) GetSubdomainOwnerToken(subdomain string) (string, error) {
 
 func (m *DBManager) AssociateTokenWithUser(userID, token string) error {
 	_, err := m.db.Exec("UPDATE users SET token = ?, is_anonymous = 0 WHERE id = ?", token, userID)
+	return err
+}
+
+func (m *DBManager) CreateBillingTransaction(userID, referenceID, trxID string, amount float64, channelCode string, status string, paymentInfo string) error {
+	_, err := m.db.Exec(
+		`INSERT INTO billing_transactions (user_id, reference_id, trx_id, amount, channel_code, status, payment_info)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		userID, referenceID, trxID, amount, channelCode, status, paymentInfo,
+	)
+	return err
+}
+
+func (m *DBManager) UpdateBillingTransactionStatus(referenceID, status string) (string, error) {
+	var userID string
+	err := m.db.QueryRow("SELECT user_id FROM billing_transactions WHERE reference_id = ?", referenceID).Scan(&userID)
+	if err != nil {
+		return "", err
+	}
+	_, err = m.db.Exec("UPDATE billing_transactions SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE reference_id = ?", status, referenceID)
+	if err != nil {
+		return "", err
+	}
+	return userID, nil
+}
+
+func (m *DBManager) UpdateUserPlan(userID, planType string) error {
+	_, err := m.db.Exec("UPDATE users SET plan_type = ? WHERE id = ?", planType, userID)
 	return err
 }
