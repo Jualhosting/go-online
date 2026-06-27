@@ -10,7 +10,6 @@ import (
 	"mime"
 	"net"
 	"net/http"
-	"net/http/httputil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -154,14 +153,41 @@ func (s *TunnelServer) handleClientConnection(conn *quic.Conn) {
 	}
 
 	// Validate Auth Token
-	if req.Token != s.AuthToken {
-		log.Printf("[Server] Unauthorized handshake attempt from %s", conn.RemoteAddr())
-		common.WriteJSON(stream, common.HandshakeResponse{
-			Success: false,
-			Error:   "Invalid token",
-		})
-		conn.CloseWithError(2, "invalid token")
-		return
+	rawToken := req.Token
+	var userID string
+	var assignedToken string
+	if s.db != nil {
+		var err error
+		userID, err = s.db.ValidateUserToken(rawToken)
+		if err != nil {
+			if rawToken == s.AuthToken {
+				userID = "user_syafri"
+			} else {
+				// Create new anonymous user
+				assignedToken = "tok_" + fmt.Sprintf("%d", time.Now().UnixNano())
+				anonUserID := "usr_" + fmt.Sprintf("%d", time.Now().UnixNano())
+				_, errUser := s.db.db.Exec("INSERT INTO users (id, email, plan_type, token, is_anonymous) VALUES (?, ?, ?, ?, 1)", anonUserID, anonUserID+"@anonymous.goinstant.my.id", "free", assignedToken)
+				if errUser == nil {
+					userID = anonUserID
+					rawToken = assignedToken
+				} else {
+					log.Printf("[Server] Failed to create anonymous user: %v", errUser)
+					conn.CloseWithError(2, "failed to create user")
+					return
+				}
+			}
+		}
+	} else {
+		if rawToken != s.AuthToken {
+			log.Printf("[Server] Unauthorized handshake attempt from %s", conn.RemoteAddr())
+			common.WriteJSON(stream, common.HandshakeResponse{
+				Success: false,
+				Error:   "Invalid token",
+			})
+			conn.CloseWithError(2, "invalid token")
+			return
+		}
+		userID = "user_syafri"
 	}
 
 	// Validate Subdomain
@@ -173,14 +199,52 @@ func (s *TunnelServer) handleClientConnection(conn *quic.Conn) {
 	// Look up subdomain in cache
 	val, found := s.routeCache.Load(subdomain)
 	if !found {
-		log.Printf("[Server] Handshake failed: Subdomain %s is not registered in the database.", subdomain)
-		common.WriteJSON(stream, common.HandshakeResponse{
-			Success: false,
-			Error:   "Subdomain is not registered",
-		})
-		conn.CloseWithError(4, "subdomain not registered")
-		return
+		if s.db != nil {
+			id, err := s.db.RegisterSubdomain(userID, subdomain, "tunnel", "")
+			if err != nil {
+				log.Printf("[Server] Failed to auto-register subdomain: %v", err)
+				common.WriteJSON(stream, common.HandshakeResponse{
+					Success: false,
+					Error:   "Failed to register subdomain",
+				})
+				conn.CloseWithError(4, "registration failed")
+				return
+			}
+			log.Printf("[Server] Auto-registered subdomain: %s for user %s", subdomain, userID)
+			info := RouteInfo{
+				SubdomainID: id,
+				Subdomain:   subdomain,
+				RoutingType: "tunnel",
+				IsActive:    true,
+			}
+			s.routeCache.Store(subdomain, info)
+			val = info
+		} else {
+			log.Printf("[Server] Handshake failed: Subdomain %s is not registered in the database.", subdomain)
+			common.WriteJSON(stream, common.HandshakeResponse{
+				Success: false,
+				Error:   "Subdomain is not registered",
+			})
+			conn.CloseWithError(4, "subdomain not registered")
+			return
+		}
+	} else {
+		// Verify ownership of the subdomain
+		if s.db != nil {
+			var ownerID string
+			err = s.db.db.QueryRow("SELECT user_id FROM subdomains WHERE subdomain = ?", subdomain).Scan(&ownerID)
+			if err == nil && ownerID != userID {
+				log.Printf("[Server] Handshake failed: Subdomain %s is owned by another user (%s)", subdomain, ownerID)
+				common.WriteJSON(stream, common.HandshakeResponse{
+					Success: false,
+					Error:   "Subdomain is already taken by another user",
+				})
+				conn.CloseWithError(7, "subdomain owned by another user")
+				return
+			}
+		}
 	}
+
 	info := val.(RouteInfo)
 	if !info.IsActive {
 		log.Printf("[Server] Handshake failed: Subdomain %s is inactive.", subdomain)
@@ -215,11 +279,16 @@ func (s *TunnelServer) handleClientConnection(conn *quic.Conn) {
 	s.clients[subdomain] = session
 	s.clientsMu.Unlock()
 
-	log.Printf("[Server] Client successfully authenticated! Registered subdomain: %s.%s", subdomain, s.Domain)
+	log.Printf("[Server] Client successfully authenticated! Registered subdomain: %s.%s (User: %s)", subdomain, s.Domain, userID)
+
+	if s.db != nil {
+		_ = s.db.LogAuditEvent(userID, "expose", fmt.Sprintf("Opened control plane tunnel for subdomain %s", subdomain))
+	}
 
 	// Send success handshake response
 	err = common.WriteJSON(stream, common.HandshakeResponse{
 		Success: true,
+		Token:   assignedToken,
 	})
 	if err != nil {
 		log.Printf("[Server] Failed to send handshake response: %v", err)
@@ -253,163 +322,9 @@ func (s *TunnelServer) startHTTPListeners() {
 		log.Fatalf("[Server] Failed to get TLS config: %v", err)
 	}
 
-	// Create reverse proxy logic
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("[Server HTTP] Received request: %s %s (Host: %s)", r.Method, r.URL.Path, r.Host)
-
-		// Serve pre-compiled client binaries
-		if strings.HasPrefix(r.URL.Path, "/downloads/") {
-			_ = os.MkdirAll("./downloads", 0755)
-			fs := http.StripPrefix("/downloads/", http.FileServer(http.Dir("./downloads")))
-			fs.ServeHTTP(w, r)
-			return
-		}
-
-		// Handle static deployment endpoint
-		if r.URL.Path == "/api/deploy" && r.Method == http.MethodPost {
-			s.handleDeploy(w, r)
-			return
-		}
-
-		host := r.Host
-		subdomain := s.extractSubdomain(host)
-		lookupKey := host
-		if subdomain != "" {
-			lookupKey = subdomain
-		}
-		lookupKey = strings.ToLower(lookupKey)
-
-		// Check routeCache
-		val, found := s.routeCache.Load(lookupKey)
-		if !found {
-			// Fallback: if it's a subdomain and not in cache, return 404
-			if subdomain != "" {
-				w.WriteHeader(http.StatusNotFound)
-				fmt.Fprintf(w, "Subdomain %s is not registered.\n", subdomain)
-				return
-			}
-			// Root domain landing
-			w.Header().Set("Content-Type", "text/html")
-			w.Write([]byte(LandingHTML))
-			return
-		}
-
-		info := val.(RouteInfo)
-		if !info.IsActive {
-			w.WriteHeader(http.StatusForbidden)
-			fmt.Fprintf(w, "Site %s is inactive.\n", lookupKey)
-			return
-		}
-
-		subdomainPrefix := info.Subdomain
-
-		if info.RoutingType == "tunnel" {
-			session := s.getClient(subdomainPrefix)
-			if session == nil {
-				w.WriteHeader(http.StatusNotFound)
-				fmt.Fprintf(w, "Tunnel %s.%s is not online.\n", subdomainPrefix, s.Domain)
-				return
-			}
-
-			// Use a reverse proxy to forward the HTTP request over QUIC
-			proxy := &httputil.ReverseProxy{
-				Director: func(req *http.Request) {
-					req.URL.Scheme = "http"
-					req.URL.Host = r.Host
-				},
-				Transport: &http.Transport{
-					DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-						log.Printf("[Server Proxy] DialContext called, opening QUIC stream to client...")
-						// Open a new QUIC stream for this HTTP request
-						stream, err := session.Connection.OpenStreamSync(ctx)
-						if err != nil {
-							log.Printf("[Server Proxy] Failed to open QUIC stream: %v", err)
-							return nil, err
-						}
-						log.Printf("[Server Proxy] QUIC stream opened (ID: %d)", stream.StreamID())
-
-						// Send header indicating HTTP protocol routing
-						header := common.StreamHeader{
-							Protocol: "http",
-							Host:     r.Host,
-						}
-						log.Printf("[Server Proxy] Writing stream header to stream %d: %+v", stream.StreamID(), header)
-						if err := common.WriteJSON(stream, header); err != nil {
-							log.Printf("[Server Proxy] Failed to write stream header: %v", err)
-							stream.Close()
-							return nil, err
-						}
-						log.Printf("[Server Proxy] Stream header written successfully to stream %d", stream.StreamID())
-
-						// Wrap the QUIC stream to satisfy net.Conn
-						return &quicConnWrap{Stream: stream, conn: session.Connection}, nil
-					},
-				},
-			}
-			proxy.ServeHTTP(w, r)
-			return
-		} else if info.RoutingType == "static" {
-			// Serve static files from Cloudflare R2 or local disk fallback
-			if s.r2 != nil && s.r2.IsEnabled() {
-				// 1. Fetch latest deploy version folder from DB
-				folder, err := s.db.GetLatestDeploymentFolder(info.SubdomainID)
-				if err != nil {
-					log.Printf("[Server Proxy] Failed to get latest deployment folder for %s: %v", subdomainPrefix, err)
-					w.WriteHeader(http.StatusNotFound)
-					fmt.Fprintf(w, "Static site %s has no active deployments.\n", subdomainPrefix)
-					return
-				}
-
-				// 2. Resolve request file path
-				cleanPath := filepath.Clean(r.URL.Path)
-				if strings.HasSuffix(r.URL.Path, "/") || cleanPath == "." || cleanPath == "/" {
-					cleanPath = "index.html"
-				}
-				cleanPath = strings.TrimPrefix(cleanPath, "/")
-
-				r2Key := folder + "/" + cleanPath
-				log.Printf("[R2 Serve] Fetching key: %s", r2Key)
-
-				// 3. Download from R2
-				body, contentType, err := s.r2.DownloadFile(r.Context(), r2Key)
-				if err != nil {
-					// Fallback to index.html if file not found (SPAs support)
-					log.Printf("[R2 Serve] File %s not found, checking index.html as fallback...", r2Key)
-					fallbackKey := folder + "/index.html"
-					body, contentType, err = s.r2.DownloadFile(r.Context(), fallbackKey)
-					if err != nil {
-						w.WriteHeader(http.StatusNotFound)
-						fmt.Fprintf(w, "File not found: %s\n", cleanPath)
-						return
-					}
-				}
-				defer body.Close()
-
-				// 4. Stream to visitor
-				if contentType != "" {
-					w.Header().Set("Content-Type", contentType)
-				} else {
-					// Fallback resolve content type
-					ext := filepath.Ext(cleanPath)
-					w.Header().Set("Content-Type", mime.TypeByExtension(ext))
-				}
-				w.WriteHeader(http.StatusOK)
-				io.Copy(w, body)
-				return
-			} else {
-				// Local disk fallback
-				deployDir := filepath.Join(s.getDeployDir(), subdomainPrefix)
-				if info, err := os.Stat(deployDir); err == nil && info.IsDir() {
-					fs := http.FileServer(http.Dir(deployDir))
-					fs.ServeHTTP(w, r)
-					return
-				}
-				w.WriteHeader(http.StatusNotFound)
-				fmt.Fprintf(w, "Static site %s has no active deployments.\n", subdomainPrefix)
-				return
-			}
-		}
-	})
+	mux := http.NewServeMux()
+	s.RegisterDashboardRoutes(mux)
+	handler := mux
 
 	// Start Port 80 (HTTP) redirect or proxy server
 	go func() {
@@ -513,10 +428,43 @@ func (s *TunnelServer) handleDeploy(w http.ResponseWriter, r *http.Request) {
 	// Authenticate
 	token := r.Header.Get("Authorization")
 	expectedPrefix := "Bearer "
-	if !strings.HasPrefix(token, expectedPrefix) || token[len(expectedPrefix):] != s.AuthToken {
-		log.Printf("[Server Deploy] Unauthorized deploy attempt")
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
+	rawToken := ""
+	if strings.HasPrefix(token, expectedPrefix) {
+		rawToken = token[len(expectedPrefix):]
+	}
+
+	var userID string
+	var assignedToken string
+	if s.db != nil {
+		var err error
+		userID, err = s.db.ValidateUserToken(rawToken)
+		if err != nil {
+			// Backwards compatibility fallback for tests
+			if rawToken == s.AuthToken {
+				userID = "user_syafri"
+			} else {
+				// Create new anonymous user
+				assignedToken = "tok_" + fmt.Sprintf("%d", time.Now().UnixNano())
+				anonUserID := "usr_" + fmt.Sprintf("%d", time.Now().UnixNano())
+				_, errUser := s.db.db.Exec("INSERT INTO users (id, email, plan_type, token, is_anonymous) VALUES (?, ?, ?, ?, 1)", anonUserID, anonUserID+"@anonymous.goinstant.my.id", "free", assignedToken)
+				if errUser == nil {
+					userID = anonUserID
+					rawToken = assignedToken
+					w.Header().Set("X-GoInstant-Token", assignedToken)
+				} else {
+					log.Printf("[Server Deploy] Failed to create anonymous user: %v", errUser)
+					http.Error(w, "Unauthorized", http.StatusUnauthorized)
+					return
+				}
+			}
+		}
+	} else {
+		if rawToken != s.AuthToken {
+			log.Printf("[Server Deploy] Unauthorized deploy attempt")
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		userID = "user_syafri"
 	}
 
 	subdomain := r.Header.Get("X-Subdomain")
@@ -525,7 +473,7 @@ func (s *TunnelServer) handleDeploy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("[Server Deploy] Receiving deployment for subdomain: %s", subdomain)
+	log.Printf("[Server Deploy] Receiving deployment for subdomain: %s (User: %s)", subdomain, userID)
 
 	// Read zip file from body
 	body, err := io.ReadAll(r.Body)
@@ -542,20 +490,30 @@ func (s *TunnelServer) handleDeploy(w http.ResponseWriter, r *http.Request) {
 	if s.db != nil {
 		id, err := s.db.GetSubdomainID(subdomain)
 		if err != nil {
-			// Register new static subdomain
-			id, err = s.db.RegisterSubdomain("user_syafri", subdomain, "static", "")
+			// Subdomain is free, register it to this user
+			id, err = s.db.RegisterSubdomain(userID, subdomain, "static", "")
 			if err != nil {
 				log.Printf("[Server Deploy] Failed to register subdomain: %v", err)
 			}
 			subdomainID = id
 		} else {
+			// Verify ownership
+			var ownerID string
+			err = s.db.db.QueryRow("SELECT user_id FROM subdomains WHERE subdomain = ?", subdomain).Scan(&ownerID)
+			if err != nil || ownerID != userID {
+				log.Printf("[Server Deploy] Subdomain already taken by another user")
+				http.Error(w, "Subdomain already taken by another user", http.StatusForbidden)
+				return
+			}
 			// Update to static routing
-			_, err = s.db.RegisterSubdomain("user_syafri", subdomain, "static", "")
+			_, err = s.db.RegisterSubdomain(userID, subdomain, "static", "")
 			if err != nil {
 				log.Printf("[Server Deploy] Failed to update subdomain to static: %v", err)
 			}
 			subdomainID = id
 		}
+
+		_ = s.db.LogAuditEvent(userID, "deploy", fmt.Sprintf("Uploaded static website deployment version %s for subdomain %s", versionStr, subdomain))
 	}
 
 	// Unzip the body

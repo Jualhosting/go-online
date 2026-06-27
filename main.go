@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"go-online/client"
+	"go-online/common"
 	"go-online/server"
 
 	"github.com/joho/godotenv"
@@ -106,7 +107,11 @@ func runExpose(args []string) {
 
 	serverAddr := fs.String("server", getEnvOrDefault("MTM_SERVER_ADDR", "goinstant.my.id:9000"), "QUIC tunnel server address")
 	subdomain := fs.String("subdomain", getEnvOrDefault("MTM_CLIENT_SUBDOMAIN", ""), "Requested subdomain prefix")
-	token := fs.String("token", getEnvOrDefault("MTM_AUTH_TOKEN", "mtm_secure_handshake_token_2026"), "Shared authorization secret token")
+	defaultToken := common.LoadLocalToken()
+	if defaultToken == "" {
+		defaultToken = getEnvOrDefault("MTM_AUTH_TOKEN", "mtm_secure_handshake_token_2026")
+	}
+	token := fs.String("token", defaultToken, "Shared authorization secret token")
 	port := fs.String("port", "", "Target local port to expose (e.g. 8080)")
 	target := fs.String("target", "", "Target local address (e.g. localhost:8080)")
 	inspectorPort := fs.String("inspector", "4040", "Port to run the local Web Traffic Inspector Dashboard")
@@ -172,7 +177,11 @@ func runDeploy(args []string) {
 
 	serverAddr := fs.String("server", getEnvOrDefault("MTM_SERVER_ADDR", "goinstant.my.id:9000"), "QUIC tunnel server address")
 	subdomain := fs.String("subdomain", getEnvOrDefault("MTM_CLIENT_SUBDOMAIN", ""), "Requested subdomain prefix")
-	token := fs.String("token", getEnvOrDefault("MTM_AUTH_TOKEN", "mtm_secure_handshake_token_2026"), "Shared secret token")
+	defaultToken := common.LoadLocalToken()
+	if defaultToken == "" {
+		defaultToken = getEnvOrDefault("MTM_AUTH_TOKEN", "mtm_secure_handshake_token_2026")
+	}
+	token := fs.String("token", defaultToken, "Shared secret token")
 	dir := fs.String("dir", "", "Local static directory to deploy")
 
 	_ = fs.Parse(args)
@@ -237,6 +246,11 @@ func runDeploy(args []string) {
 	respBody, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK {
 		log.Fatalf("[Deploy] Upload failed with status %s: %s", resp.Status, string(respBody))
+	}
+
+	if newToken := resp.Header.Get("X-GoInstant-Token"); newToken != "" {
+		log.Printf("[Deploy] Server assigned new session token: %s. Saving to ~/.goinstant/config.json", newToken)
+		_ = common.SaveLocalToken(newToken)
 	}
 
 	publicDomain := hostOnly

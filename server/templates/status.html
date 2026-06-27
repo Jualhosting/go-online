@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Global Network Edge Status | GoInstant</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@450;600&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=JetBrains+Mono:wght@100..900&display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .pulsing-ring {
+            box-shadow: 0 0 0 0 rgba(78, 222, 163, 0.7);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(78, 222, 163, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(78, 222, 163, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(78, 222, 163, 0); }
+        }
+        .bar-hover:hover {
+            filter: brightness(1.2);
+            transform: translateY(-2px);
+        }
+        .glass-card {
+            background: rgba(21, 32, 49, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid #464555;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #081425; }
+        ::-webkit-scrollbar-thumb { background: #2a3548; border-radius: 10px; }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error-container": "#93000a",
+                        "on-secondary-fixed": "#002113",
+                        "on-tertiary-fixed-variant": "#930013",
+                        "on-tertiary-fixed": "#410004",
+                        "tertiary": "#ffb3ad",
+                        "inverse-on-surface": "#263143",
+                        "error": "#ffb4ab",
+                        "on-secondary-container": "#00311f",
+                        "on-error-container": "#ffdad6",
+                        "primary-container": "#4f46e5",
+                        "secondary-container": "#00a572",
+                        "surface-dim": "#081425",
+                        "on-primary-fixed-variant": "#3323cc",
+                        "surface-container-lowest": "#040e1f",
+                        "on-surface": "#d8e3fb",
+                        "secondary": "#4edea3",
+                        "on-primary": "#1d00a5",
+                        "surface-container-low": "#111c2d",
+                        "outline-variant": "#464555",
+                        "on-secondary-fixed-variant": "#005236",
+                        "secondary-fixed": "#6ffbbe",
+                        "secondary-fixed-dim": "#4edea3",
+                        "on-tertiary-container": "#ffd0cc",
+                        "surface-container": "#152031",
+                        "on-background": "#d8e3fb",
+                        "tertiary-fixed-dim": "#ffb3ad",
+                        "outline": "#918fa1",
+                        "on-primary-container": "#dad7ff",
+                        "on-error": "#690005",
+                        "tertiary-fixed": "#ffdad7",
+                        "primary-fixed": "#e2dfff",
+                        "inverse-primary": "#4d44e3",
+                        "surface-tint": "#c3c0ff",
+                        "tertiary-container": "#bc1d25",
+                        "on-surface-variant": "#c7c4d8",
+                        "inverse-surface": "#d8e3fb",
+                        "surface-variant": "#2a3548",
+                        "on-secondary": "#003824",
+                        "surface-container-high": "#1f2a3c",
+                        "surface": "#081425",
+                        "surface-container-highest": "#2a3548",
+                        "surface-bright": "#2f3a4c",
+                        "on-tertiary": "#68000a",
+                        "on-primary-fixed": "#0f0069",
+                        "primary": "#c3c0ff",
+                        "primary-fixed-dim": "#c3c0ff",
+                        "background": "#081425"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "xl": "32px",
+                        "margin-desktop": "32px",
+                        "sidebar-collapsed": "64px",
+                        "margin-mobile": "16px",
+                        "sm": "8px",
+                        "md": "16px",
+                        "lg": "24px",
+                        "base": "4px",
+                        "sidebar-width": "260px",
+                        "xs": "4px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["JetBrains Mono"],
+                        "body-lg": ["Inter"],
+                        "code-sm": ["JetBrains Mono"],
+                        "body-sm": ["Inter"],
+                        "code-md": ["JetBrains Mono"],
+                        "headline-lg": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "display-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "code-sm": ["12px", {"lineHeight": "18px", "fontWeight": "450"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "code-md": ["14px", {"lineHeight": "22px", "fontWeight": "450"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface font-body-md overflow-x-hidden">
+<!-- TopAppBar -->
+<header class="sticky top-0 z-40 w-full border-b border-outline-variant bg-surface/80 backdrop-blur-md flex justify-between items-center h-16 px-margin-desktop">
+<div class="flex items-center gap-md">
+<span class="font-headline-md text-headline-md font-extrabold text-on-surface">GoInstant</span>
+<nav class="hidden md:flex items-center gap-lg ml-xl">
+<a class="text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:scale-95 transition-transform font-body-md text-body-md" href="#">Dashboard</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:scale-95 transition-transform font-body-md text-body-md" href="#">Domains</a>
+<a class="text-primary font-bold transition-colors cursor-pointer active:scale-95 transition-transform font-body-md text-body-md" href="#">Status</a>
+</nav>
+</div>
+<div class="flex items-center gap-md">
+<div class="relative hidden lg:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
+<input class="bg-surface-variant/30 border border-outline-variant rounded-lg pl-10 pr-4 py-1.5 text-body-sm focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container" placeholder="Search systems..." type="text"/>
+</div>
+<button class="bg-primary-container text-on-primary-container px-md py-1.5 rounded-lg font-label-caps text-label-caps hover:brightness-110 active:scale-95 transition-all">
+                New Project
+            </button>
+<div class="flex gap-sm">
+<span class="material-symbols-outlined text-on-surface-variant hover:text-primary cursor-pointer p-2 rounded-full hover:bg-surface-variant/50 transition-all">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant hover:text-primary cursor-pointer p-2 rounded-full hover:bg-surface-variant/50 transition-all">help</span>
+</div>
+<div class="w-8 h-8 rounded-full border border-outline-variant overflow-hidden cursor-pointer active:scale-95 transition-transform">
+<img class="w-full h-full object-cover" data-alt="A high-quality professional studio portrait of a young developer with neutral lighting and a clean, minimalist background, representing a user profile icon in a technical SaaS environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCdHIM3fMn59rEj3u9bM5pZ5IBLgHG_Upuc70Vz6haLML6ffw8rJX57mxodMUo6wd7XjfaVL_qEbPQT5ozK9M11yLjxpk8S_MmVY6fnwYCGXEgvue-P_gRWdz1sAKwSUiOFyCeswtMW1mgQaJiPA3VWx-oOJfuG2RV9asrTl4nlVAyTBHVF3o5Svxv3VcedSbmV8XFpBsdCYIfWBC_zpnA4BXEM3zgftq7sT1ImYgQEgvOLwfzyNzqkEdVHWOK5f5I5OPubnd9rNKc"/>
+</div>
+</div>
+</header>
+<main class="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-xl">
+<!-- Big Card Header -->
+<section class="mb-xl">
+<div class="glass-card rounded-xl p-xl flex flex-col md:flex-row items-center justify-between relative overflow-hidden">
+<!-- Background Pattern -->
+<div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: radial-gradient(#4edea3 1px, transparent 1px); background-size: 20px 20px;"></div>
+<div class="z-10 text-center md:text-left">
+<h1 class="font-headline-lg text-headline-lg text-on-surface mb-xs">All Systems Operational</h1>
+<p class="text-on-surface-variant font-body-md">Global network backbone performing within nominal parameters.</p>
+<div class="flex items-center gap-md mt-lg justify-center md:justify-start">
+<div class="flex items-center gap-xs">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="text-label-caps font-label-caps text-secondary">Latency: 14ms avg</span>
+</div>
+<div class="flex items-center gap-xs">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="text-label-caps font-label-caps text-secondary">Traffic: 4.2 Tbps</span>
+</div>
+</div>
+</div>
+<div class="mt-lg md:mt-0 z-10">
+<div class="w-32 h-32 rounded-full bg-secondary/10 border-4 border-secondary/30 flex items-center justify-center pulsing-ring">
+<span class="material-symbols-outlined text-[64px] text-secondary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Uptime Matrix -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-lg mb-xl">
+<!-- API Status -->
+<div class="glass-card rounded-lg p-lg border-l-4 border-l-secondary">
+<div class="flex justify-between items-center mb-md">
+<h3 class="font-headline-md text-headline-md text-on-surface">API Gateway</h3>
+<span class="text-label-caps font-label-caps text-secondary">99.99%</span>
+</div>
+<div class="flex gap-1 h-12 items-end">
+<!-- Generating 30 bars (90 days group by 3s) -->
+<script>
+                        for(let i=0; i<30; i++) {
+                            const height = Math.floor(Math.random() * 20) + 80;
+                            const color = Math.random() > 0.05 ? 'bg-secondary/60' : 'bg-error/60';
+                            document.write(`<div class="flex-1 ${color} rounded-t-sm bar-hover transition-all" style="height: ${height}%" title="Uptime: ${height}%"></div>`);
+                        }
+                    </script>
+</div>
+<div class="flex justify-between mt-sm text-label-caps font-label-caps text-on-surface-variant">
+<span>90d ago</span>
+<span>Today</span>
+</div>
+</div>
+<!-- Edge Gateways -->
+<div class="glass-card rounded-lg p-lg border-l-4 border-l-secondary">
+<div class="flex justify-between items-center mb-md">
+<h3 class="font-headline-md text-headline-md text-on-surface">Edge Nodes</h3>
+<span class="text-label-caps font-label-caps text-secondary">100.0%</span>
+</div>
+<div class="flex gap-1 h-12 items-end">
+<script>
+                        for(let i=0; i<30; i++) {
+                            const height = 100;
+                            document.write(`<div class="flex-1 bg-secondary/60 rounded-t-sm bar-hover transition-all" style="height: ${height}%" title="Uptime: 100%"></div>`);
+                        }
+                    </script>
+</div>
+<div class="flex justify-between mt-sm text-label-caps font-label-caps text-on-surface-variant">
+<span>90d ago</span>
+<span>Today</span>
+</div>
+</div>
+<!-- TLS Engine -->
+<div class="glass-card rounded-lg p-lg border-l-4 border-l-secondary">
+<div class="flex justify-between items-center mb-md">
+<h3 class="font-headline-md text-headline-md text-on-surface">TLS Engine</h3>
+<span class="text-label-caps font-label-caps text-secondary">99.98%</span>
+</div>
+<div class="flex gap-1 h-12 items-end">
+<script>
+                        for(let i=0; i<30; i++) {
+                            const height = Math.floor(Math.random() * 10) + 90;
+                            const color = Math.random() > 0.1 ? 'bg-secondary/60' : 'bg-secondary/30';
+                            document.write(`<div class="flex-1 ${color} rounded-t-sm bar-hover transition-all" style="height: ${height}%" title="Uptime: ${height}%"></div>`);
+                        }
+                    </script>
+</div>
+<div class="flex justify-between mt-sm text-label-caps font-label-caps text-on-surface-variant">
+<span>90d ago</span>
+<span>Today</span>
+</div>
+</div>
+<!-- R2 Mesh -->
+<div class="glass-card rounded-lg p-lg border-l-4 border-l-tertiary">
+<div class="flex justify-between items-center mb-md">
+<h3 class="font-headline-md text-headline-md text-on-surface">R2 Mesh</h3>
+<span class="text-label-caps font-label-caps text-tertiary">98.45%</span>
+</div>
+<div class="flex gap-1 h-12 items-end">
+<script>
+                        for(let i=0; i<30; i++) {
+                            const isDown = i === 12 || i === 25;
+                            const height = isDown ? 30 : 100;
+                            const color = isDown ? 'bg-tertiary' : 'bg-secondary/60';
+                            document.write(`<div class="flex-1 ${color} rounded-t-sm bar-hover transition-all" style="height: ${height}%" title="Uptime: ${height}%"></div>`);
+                        }
+                    </script>
+</div>
+<div class="flex justify-between mt-sm text-label-caps font-label-caps text-on-surface-variant">
+<span>90d ago</span>
+<span>Today</span>
+</div>
+</div>
+</section>
+<!-- Incidents Archive -->
+<section class="mb-xl">
+<div class="flex items-center gap-md mb-lg">
+<h2 class="font-headline-md text-headline-md text-on-surface">Incident History</h2>
+<div class="h-px flex-1 bg-outline-variant"></div>
+</div>
+<div class="space-y-sm">
+<!-- Incident 1 -->
+<details class="group glass-card rounded-lg overflow-hidden border border-outline-variant transition-all">
+<summary class="flex justify-between items-center p-md cursor-pointer list-none hover:bg-surface-variant/30 transition-colors">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-tertiary">warning</span>
+<div>
+<span class="font-body-md font-bold block">Partial Outage: US-EAST-1 Edge Nodes</span>
+<span class="text-label-caps font-label-caps text-on-surface-variant">October 14, 2023 — Resolved</span>
+</div>
+</div>
+<span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
+</summary>
+<div class="p-md bg-surface-container-low/50 border-t border-outline-variant font-body-sm space-y-md">
+<p>We observed elevated error rates for traffic originating from US-EAST-1 regions. Our engineering team identified a configuration drift in the load balancer layer.</p>
+<div class="bg-surface-container p-sm rounded border border-outline-variant font-code-sm text-code-sm">
+<span class="text-secondary"># RCA Summary</span><br/>
+                            Event: L7 Routing Failure<br/>
+                            Impact: 2.1% of global traffic<br/>
+                            Duration: 14 minutes
+                        </div>
+</div>
+</details>
+<!-- Incident 2 -->
+<details class="group glass-card rounded-lg overflow-hidden border border-outline-variant transition-all">
+<summary class="flex justify-between items-center p-md cursor-pointer list-none hover:bg-surface-variant/30 transition-colors">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-primary">build</span>
+<div>
+<span class="font-body-md font-bold block">Scheduled Maintenance: DB Cluster Upgrade</span>
+<span class="text-label-caps font-label-caps text-on-surface-variant">September 28, 2023 — Completed</span>
+</div>
+</div>
+<span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
+</summary>
+<div class="p-md bg-surface-container-low/50 border-t border-outline-variant font-body-sm">
+<p>Standard periodic upgrade to the PostgreSQL core clusters. No downtime was observed during the rolling update.</p>
+</div>
+</details>
+<!-- Incident 3 -->
+<details class="group glass-card rounded-lg overflow-hidden border border-outline-variant transition-all">
+<summary class="flex justify-between items-center p-md cursor-pointer list-none hover:bg-surface-variant/30 transition-colors">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-on-surface-variant">info</span>
+<div>
+<span class="font-body-md font-bold block">Network Latency Anomaly: EU-Central</span>
+<span class="text-label-caps font-label-caps text-on-surface-variant">September 12, 2023 — Resolved</span>
+</div>
+</div>
+<span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
+</summary>
+<div class="p-md bg-surface-container-low/50 border-t border-outline-variant font-body-sm">
+<p>Upstream fiber cut between Frankfurt and Munich caused minor latency spikes (approx +40ms) for 12 minutes. Traffic was rerouted via Amsterdam.</p>
+</div>
+</details>
+</div>
+</section>
+<!-- Network Map Visualization (Placeholder with Bento Feel) -->
+<section class="grid grid-cols-1 md:grid-cols-3 gap-lg h-96">
+<div class="md:col-span-2 glass-card rounded-xl overflow-hidden relative border border-outline-variant">
+<div class="absolute top-4 left-4 z-10 bg-surface/80 backdrop-blur px-md py-sm rounded border border-outline-variant">
+<p class="font-label-caps text-label-caps">Real-time Edge Traffic</p>
+</div>
+<div class="w-full h-full bg-surface-dim opacity-40">
+<!-- Map Placeholder -->
+<div class="w-full h-full bg-cover bg-center" data-alt="A dark, cinematic global world map with glowing cyan data lines connecting major tech hubs like San Francisco, London, Tokyo, and Singapore. The map has a high-tech digital grid overlay, neon accents, and a dark obsidian surface texture, fitting a developer-focused network monitoring dashboard." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBX381-z_yu9i3ytS3s-zDNUvO39Vsi4aCyY_L2y8IcJjkiTZCHv6R2bzNXdRW9QKof5WcYI8d8AoJ4vBuE7K7sKKhrMMoFHoyoz1hjzlKbJwr7bJ-4cHOGq32kYC69pgJ3slcl9WrYkGXUhQrXAt5a065dzTNP8YFnV3VcXICh5aU0Iz65zF4bpsx2Kx4eBbLE9HnJr297iDHRpSVKhfVrP0xc0OIu0ZLldDurpeB0Ze19XMtDvmou9ysXD0oUfbOoUE0Hw5Sj7Ms')"></div>
+</div>
+<!-- Data Point Overlays -->
+<div class="absolute bottom-4 right-4 flex gap-sm">
+<div class="glass-card px-md py-sm rounded-lg flex items-center gap-xs">
+<span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+<span class="text-code-sm font-code-sm">SFO: 8ms</span>
+</div>
+<div class="glass-card px-md py-sm rounded-lg flex items-center gap-xs">
+<span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+<span class="text-code-sm font-code-sm">LHR: 12ms</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-lg">
+<div class="glass-card rounded-xl p-md flex-1 flex flex-col justify-center items-center text-center">
+<span class="material-symbols-outlined text-primary-container text-4xl mb-sm">speed</span>
+<h4 class="font-label-caps text-label-caps text-on-surface-variant">Global Avg Response</h4>
+<p class="font-display-lg text-[32px] text-on-surface">142ms</p>
+</div>
+<div class="glass-card rounded-xl p-md flex-1 flex flex-col justify-center items-center text-center border-l-4 border-l-secondary">
+<span class="material-symbols-outlined text-secondary text-4xl mb-sm">verified_user</span>
+<h4 class="font-label-caps text-label-caps text-on-surface-variant">Security Shields</h4>
+<p class="font-display-lg text-[32px] text-on-surface">Active</p>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer / Bottom Navigation for Mobile -->
+<footer class="fixed bottom-0 w-full md:hidden z-50 border-t border-outline-variant bg-surface/90 backdrop-blur-lg flex justify-around items-center h-16 px-4">
+<div class="flex flex-col items-center justify-center text-on-surface-variant p-2">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-caps text-[10px]">Home</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant p-2">
+<span class="material-symbols-outlined">list_alt</span>
+<span class="font-label-caps text-[10px]">Logs</span>
+</div>
+<div class="flex flex-col items-center justify-center text-primary bg-primary-container/20 rounded-xl p-2">
+<span class="material-symbols-outlined">monitoring</span>
+<span class="font-label-caps text-[10px]">Status</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant p-2">
+<span class="material-symbols-outlined">group</span>
+<span class="font-label-caps text-[10px]">Team</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant p-2">
+<span class="material-symbols-outlined">menu</span>
+<span class="font-label-caps text-[10px]">Menu</span>
+</div>
+</footer>
+<script>
+        // Micro-interaction for accordions or bars if needed
+        document.querySelectorAll('details').forEach((el) => {
+            el.addEventListener('toggle', (e) => {
+                if (el.open) {
+                    el.classList.add('shadow-lg', 'border-primary/50');
+                } else {
+                    el.classList.remove('shadow-lg', 'border-primary/50');
+                }
+            });
+        });
+    </script>
+</body></html>

@@ -51,6 +51,8 @@ func (m *DBManager) migrate() error {
 			id TEXT PRIMARY KEY,
 			email TEXT UNIQUE NOT NULL,
 			plan_type TEXT DEFAULT 'free',
+			token TEXT UNIQUE,
+			is_anonymous INTEGER DEFAULT 1,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		);`,
 		`CREATE TABLE IF NOT EXISTS subdomains (
@@ -71,6 +73,28 @@ func (m *DBManager) migrate() error {
 			deployed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			FOREIGN KEY(subdomain_id) REFERENCES subdomains(id)
 		);`,
+		`CREATE TABLE IF NOT EXISTS webhook_logs (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			subdomain TEXT NOT NULL,
+			method TEXT NOT NULL,
+			url TEXT NOT NULL,
+			headers TEXT NOT NULL,
+			body TEXT NOT NULL,
+			received_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		);`,
+		`CREATE TABLE IF NOT EXISTS traffic_stats (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			subdomain TEXT NOT NULL,
+			bytes_sent INTEGER NOT NULL,
+			logged_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		);`,
+		`CREATE TABLE IF NOT EXISTS audit_events (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id TEXT NOT NULL,
+			event_type TEXT NOT NULL,
+			details TEXT NOT NULL,
+			logged_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		);`,
 	}
 
 	for _, query := range queries {
@@ -78,6 +102,11 @@ func (m *DBManager) migrate() error {
 			return err
 		}
 	}
+
+	// Dynamic column migrations (ignore errors if columns exist)
+	_, _ = m.db.Exec("ALTER TABLE users ADD COLUMN token TEXT UNIQUE")
+	_, _ = m.db.Exec("ALTER TABLE users ADD COLUMN is_anonymous INTEGER DEFAULT 1")
+
 	return nil
 }
 
@@ -200,4 +229,45 @@ func (m *DBManager) GetLatestDeploymentFolder(subdomainID int64) (string, error)
 	var folder string
 	err := m.db.QueryRow("SELECT r2_bucket_folder FROM static_deploys WHERE subdomain_id = ? ORDER BY id DESC LIMIT 1", subdomainID).Scan(&folder)
 	return folder, err
+}
+
+func (m *DBManager) LogWebhookRequest(subdomain, method, url, headers, body string) error {
+	_, err := m.db.Exec(
+		"INSERT INTO webhook_logs (subdomain, method, url, headers, body) VALUES (?, ?, ?, ?, ?)",
+		subdomain, method, url, headers, body,
+	)
+	return err
+}
+
+func (m *DBManager) LogTraffic(subdomain string, bytesSent int64) error {
+	_, err := m.db.Exec(
+		"INSERT INTO traffic_stats (subdomain, bytes_sent) VALUES (?, ?)",
+		subdomain, bytesSent,
+	)
+	return err
+}
+
+func (m *DBManager) LogAuditEvent(userID, eventType, details string) error {
+	_, err := m.db.Exec(
+		"INSERT INTO audit_events (user_id, event_type, details) VALUES (?, ?, ?)",
+		userID, eventType, details,
+	)
+	return err
+}
+
+func (m *DBManager) ValidateUserToken(token string) (string, error) {
+	var userID string
+	err := m.db.QueryRow("SELECT id FROM users WHERE token = ?", token).Scan(&userID)
+	return userID, err
+}
+
+func (m *DBManager) GetSubdomainOwnerToken(subdomain string) (string, error) {
+	var token string
+	err := m.db.QueryRow("SELECT u.token FROM subdomains s JOIN users u ON s.user_id = u.id WHERE s.subdomain = ?", subdomain).Scan(&token)
+	return token, err
+}
+
+func (m *DBManager) AssociateTokenWithUser(userID, token string) error {
+	_, err := m.db.Exec("UPDATE users SET token = ?, is_anonymous = 0 WHERE id = ?", token, userID)
+	return err
 }

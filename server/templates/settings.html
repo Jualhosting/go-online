@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>GoInstant - API & Credentials</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@450;600&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=JetBrains+Mono:wght@100..900&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "error-container": "#93000a",
+                    "on-secondary-fixed": "#002113",
+                    "on-tertiary-fixed-variant": "#930013",
+                    "on-tertiary-fixed": "#410004",
+                    "tertiary": "#ffb3ad",
+                    "inverse-on-surface": "#263143",
+                    "error": "#ffb4ab",
+                    "on-secondary-container": "#00311f",
+                    "on-error-container": "#ffdad6",
+                    "primary-container": "#4f46e5",
+                    "secondary-container": "#00a572",
+                    "surface-dim": "#081425",
+                    "on-primary-fixed-variant": "#3323cc",
+                    "surface-container-lowest": "#040e1f",
+                    "on-surface": "#d8e3fb",
+                    "secondary": "#4edea3",
+                    "on-primary": "#1d00a5",
+                    "surface-container-low": "#111c2d",
+                    "outline-variant": "#464555",
+                    "on-secondary-fixed-variant": "#005236",
+                    "secondary-fixed": "#6ffbbe",
+                    "secondary-fixed-dim": "#4edea3",
+                    "on-tertiary-container": "#ffd0cc",
+                    "surface-container": "#152031",
+                    "on-background": "#d8e3fb",
+                    "tertiary-fixed-dim": "#ffb3ad",
+                    "outline": "#918fa1",
+                    "on-primary-container": "#dad7ff",
+                    "on-error": "#690005",
+                    "tertiary-fixed": "#ffdad7",
+                    "primary-fixed": "#e2dfff",
+                    "inverse-primary": "#4d44e3",
+                    "surface-tint": "#c3c0ff",
+                    "tertiary-container": "#bc1d25",
+                    "on-surface-variant": "#c7c4d8",
+                    "inverse-surface": "#d8e3fb",
+                    "surface-variant": "#2a3548",
+                    "on-secondary": "#003824",
+                    "surface-container-high": "#1f2a3c",
+                    "surface": "#081425",
+                    "surface-container-highest": "#2a3548",
+                    "surface-bright": "#2f3a4c",
+                    "on-tertiary": "#68000a",
+                    "on-primary-fixed": "#000000",
+                    "primary": "#c3c0ff",
+                    "primary-fixed-dim": "#c3c0ff",
+                    "background": "#081425"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "xl": "32px",
+                    "margin-desktop": "32px",
+                    "sidebar-collapsed": "64px",
+                    "margin-mobile": "16px",
+                    "sm": "8px",
+                    "md": "16px",
+                    "lg": "24px",
+                    "base": "4px",
+                    "sidebar-width": "260px",
+                    "xs": "4px",
+                    "gutter": "24px"
+            },
+            "fontFamily": {
+                    "label-caps": ["JetBrains Mono"],
+                    "body-lg": ["Inter"],
+                    "code-sm": ["JetBrains Mono"],
+                    "body-sm": ["Inter"],
+                    "code-md": ["JetBrains Mono"],
+                    "headline-lg": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "body-md": ["Inter"],
+                    "display-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "code-sm": ["12px", {"lineHeight": "18px", "fontWeight": "450"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "code-md": ["14px", {"lineHeight": "22px", "fontWeight": "450"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #081425;
+            color: #d8e3fb;
+            font-family: 'Inter', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .glass-panel {
+            background: rgba(11, 18, 31, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid #1E293B;
+        }
+        .terminal-header-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        .cursor-blink {
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink {
+            from, to { opacity: 1; }
+            50% { opacity: 0; }
+        }
+    </style>
+</head>
+<body class="flex min-h-screen">
+<!-- SideNavBar (Shared Component JSON Source) -->
+<aside class="fixed left-0 top-0 h-screen w-sidebar-width border-r border-outline-variant bg-surface dark:bg-surface flex flex-col h-full py-lg z-50">
+<div class="px-md mb-xl">
+<div class="flex items-center gap-sm">
+<div class="w-8 h-8 bg-primary-container rounded flex items-center justify-center">
+<span class="material-symbols-outlined text-white" data-icon="rocket_launch">rocket_launch</span>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface">GoInstant</h1>
+<p class="text-[10px] uppercase tracking-widest text-outline">Developer Platform</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<!-- Active Logic: Settings (Credentials usually under settings/billing) -->
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-variant/50 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-body-sm text-body-sm">Dashboard</span>
+</a>
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-variant/50 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="language">language</span>
+<span class="font-body-sm text-body-sm">Domains</span>
+</a>
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-variant/50 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="webhook">webhook</span>
+<span class="font-body-sm text-body-sm">Webhooks</span>
+</a>
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-variant/50 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="folder_open">folder_open</span>
+<span class="font-body-sm text-body-sm">Files</span>
+</a>
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-variant/50 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+<span class="font-body-sm text-body-sm">Team</span>
+</a>
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-variant/50 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+<span class="font-body-sm text-body-sm">Billing</span>
+</a>
+<a class="flex items-center gap-sm px-md py-sm text-primary border-l-2 border-primary bg-primary-container/10 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-body-sm text-body-sm">Settings</span>
+</a>
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-variant/50 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="description">description</span>
+<span class="font-body-sm text-body-sm">Docs</span>
+</a>
+</nav>
+<div class="mt-auto px-md py-lg border-t border-outline-variant/30 space-y-4">
+<button class="w-full py-sm bg-surface-container-high rounded-lg text-primary font-label-caps text-label-caps border border-outline-variant hover:bg-surface-container-highest transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]" data-icon="help">help</span>
+                Documentation
+            </button>
+<div class="flex items-center gap-3 px-2">
+<div class="w-8 h-8 rounded-full bg-surface-variant" data-alt="A professional headshot of a software engineer with glasses, looking directly into the camera with a confident, slight smile. The lighting is crisp and cool-toned, with blue and purple highlights suggesting a high-tech server room background. The overall aesthetic is clean, sharp, and modern, fitting for a developer platform user interface profile section." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDJ83Qx-goVSkRsiVXcdrCgzJ2yN4UHeqs1rt7MU6pXmkuKoO8ACR1LGhDrN9nfuJ8ZMtc2j1tdJxcF8xmH838qzyCf7KwB3XqadKpbxSLECk4rk-yJC-EzZ6UHjoDuV3wF27mYe-KC8dfG5JHxMImSg-byJLlyJktscXV5sBasvnme6k0qINYIdHoKA_uZb5muAAlKyFQzELgCjXznyoYkUWqdBptov-fQzOWJHlWq6iMB--NPYK8_lMSXl0XadglnXL8bjiZPq2g')"></div>
+<div>
+<p class="text-on-surface font-body-sm text-body-sm font-bold">alex_dev</p>
+<p class="text-outline text-[10px] uppercase tracking-tighter">Pro Plan</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 ml-sidebar-width p-margin-desktop space-y-lg mb-20">
+<!-- TopAppBar (Simulated Integration) -->
+<header class="flex justify-between items-center h-16 mb-lg">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">API & Credentials</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Manage your machine-to-machine authentication tokens.</p>
+</div>
+<div class="flex items-center gap-md">
+<button class="px-lg py-sm bg-primary text-on-primary-fixed rounded-lg font-label-caps text-label-caps hover:brightness-110 transition-all">
+                    Upgrade
+                </button>
+<div class="w-px h-8 bg-outline-variant"></div>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer" data-icon="notifications">notifications</span>
+</div>
+</header>
+<!-- Bento Grid Layout for Credentials -->
+<div class="grid grid-cols-12 gap-gutter">
+<!-- Token Generator Form (Span 5) -->
+<section class="col-span-12 lg:col-span-5 glass-panel rounded-xl p-lg flex flex-col gap-lg shadow-xl">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary" data-icon="key">key</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">Create New Token</h3>
+</div>
+<form class="space-y-md">
+<div class="space-y-xs">
+<label class="font-label-caps text-label-caps text-outline">Token Name</label>
+<input class="w-full bg-surface-variant/30 border border-outline-variant rounded px-md py-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-md text-body-md" placeholder="e.g. CI/CD Pipeline" type="text"/>
+</div>
+<div class="space-y-sm">
+<label class="font-label-caps text-label-caps text-outline">Scopes</label>
+<div class="grid grid-cols-1 gap-2">
+<label class="flex items-center gap-md p-sm border border-outline-variant/30 rounded-lg cursor-pointer hover:bg-surface-variant/20 transition-colors">
+<input class="w-4 h-4 rounded-sm border-outline-variant text-primary focus:ring-primary bg-transparent" type="checkbox"/>
+<div>
+<p class="font-body-sm text-body-sm font-bold">Read-Only</p>
+<p class="text-[11px] text-outline">Access all metadata without mutation rights.</p>
+</div>
+</label>
+<label class="flex items-center gap-md p-sm border border-outline-variant/30 rounded-lg cursor-pointer hover:bg-surface-variant/20 transition-colors">
+<input class="w-4 h-4 rounded-sm border-outline-variant text-primary focus:ring-primary bg-transparent" type="checkbox"/>
+<div>
+<p class="font-body-sm text-body-sm font-bold">Tunnel Only</p>
+<p class="text-[11px] text-outline">Restrict token usage to proxy/tunnel connections.</p>
+</div>
+</label>
+<label class="flex items-center gap-md p-sm border border-outline-variant/30 rounded-lg cursor-pointer hover:bg-surface-variant/20 transition-colors">
+<input class="w-4 h-4 rounded-sm border-outline-variant text-primary focus:ring-primary bg-transparent" type="checkbox"/>
+<div>
+<p class="font-body-sm text-body-sm font-bold">Admin</p>
+<p class="text-[11px] text-outline text-tertiary">Full destructive access to project settings.</p>
+</div>
+</label>
+</div>
+</div>
+<div class="space-y-xs">
+<label class="font-label-caps text-label-caps text-outline">Expiration</label>
+<select class="w-full bg-surface-variant/30 border border-outline-variant rounded px-md py-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none appearance-none transition-all font-body-md text-body-md">
+<option>7 Days</option>
+<option>30 Days</option>
+<option>90 Days</option>
+<option>No Expiration</option>
+</select>
+</div>
+<button class="w-full py-md bg-primary-container text-white rounded-lg font-label-caps text-label-caps hover:shadow-lg hover:shadow-primary/20 transition-all transform active:scale-[0.98]" type="button">
+                        Generate Token
+                    </button>
+</form>
+</section>
+<!-- Handshake UI / CLI Mockup (Span 7) -->
+<section class="col-span-12 lg:col-span-7 flex flex-col gap-gutter">
+<div class="bg-black rounded-xl border border-outline-variant overflow-hidden shadow-2xl flex-1 flex flex-col min-h-[320px]">
+<div class="bg-surface-variant/40 px-md py-sm flex items-center justify-between border-b border-outline-variant">
+<div class="flex gap-2">
+<div class="terminal-header-dot bg-[#FF5F56]"></div>
+<div class="terminal-header-dot bg-[#FFBD2E]"></div>
+<div class="terminal-header-dot bg-[#27C93F]"></div>
+</div>
+<span class="font-label-caps text-[10px] text-outline tracking-widest">ZSH — goinstant CLI</span>
+<span class="material-symbols-outlined text-[16px] text-outline" data-icon="terminal">terminal</span>
+</div>
+<div class="p-lg font-code-md text-code-md text-[#A5B4FC] space-y-2 flex-1 overflow-auto bg-[#0A0C10]">
+<div id="cli-output">
+<p class="text-outline-variant"># Authenticate with your project context</p>
+<p><span class="text-secondary">$</span> goinstant login</p>
+<p class="text-white mt-4">Logging in to <span class="text-primary font-bold">goinstant.dev</span>...</p>
+<p class="animate-pulse">Waiting for browser authentication...</p>
+</div>
+<div class="hidden" id="cli-success">
+<p class="text-[#27C93F]">✓ Successfully authenticated as alex_dev</p>
+<p class="text-white">Active context: <span class="text-secondary">main-cluster-01</span></p>
+<p class="text-white mt-2">API Token stored in <span class="bg-surface-variant px-1 rounded">~/.goinstant/config.json</span></p>
+</div>
+<p class="text-secondary pt-2">
+                            $ <span class="inline-block w-2 h-4 bg-primary cursor-blink ml-1 align-middle"></span>
+</p>
+</div>
+<div class="bg-surface-variant/20 p-md flex items-center justify-between">
+<p class="text-[11px] text-outline italic">Tip: Use 'goinstant whoami' to verify token status.</p>
+<button class="text-primary font-label-caps text-[11px] hover:underline" onclick="simulateLogin()">Simulate Success</button>
+</div>
+</div>
+<!-- Active Tokens Table -->
+<div class="glass-panel rounded-xl overflow-hidden shadow-xl border-outline-variant/40">
+<div class="px-lg py-md border-b border-outline-variant/30 flex justify-between items-center bg-surface-container-low">
+<h4 class="font-label-caps text-label-caps text-on-surface">Active Deployment Tokens</h4>
+<span class="text-[10px] px-2 py-0.5 bg-secondary-container/20 text-secondary rounded-full border border-secondary/30 uppercase tracking-widest">3 Active</span>
+</div>
+<table class="w-full text-left font-body-sm text-body-sm">
+<thead>
+<tr class="text-outline font-label-caps text-[11px] border-b border-outline-variant/20 bg-surface-container-lowest">
+<th class="px-lg py-md">Name</th>
+<th class="px-lg py-md">Scope</th>
+<th class="px-lg py-md">Created</th>
+<th class="px-lg py-md">Last Used</th>
+<th class="px-lg py-md text-right">Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/10">
+<tr class="hover:bg-surface-variant/10 transition-colors">
+<td class="px-lg py-md">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-[18px] text-outline" data-icon="cloud_sync">cloud_sync</span>
+<span class="text-on-surface font-bold">Vercel Integration</span>
+</div>
+</td>
+<td class="px-lg py-md"><code class="bg-surface-variant/40 px-2 py-0.5 rounded text-[12px]">read-write</code></td>
+<td class="px-lg py-md text-outline">Oct 12, 2023</td>
+<td class="px-lg py-md text-outline">2m ago</td>
+<td class="px-lg py-md text-right">
+<button class="text-tertiary-container hover:text-tertiary transition-colors font-label-caps text-[11px]">Revoke</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-variant/10 transition-colors">
+<td class="px-lg py-md">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-[18px] text-outline" data-icon="terminal">terminal</span>
+<span class="text-on-surface font-bold">Local Dev CLI</span>
+</div>
+</td>
+<td class="px-lg py-md"><code class="bg-surface-variant/40 px-2 py-0.5 rounded text-[12px]">full-admin</code></td>
+<td class="px-lg py-md text-outline">Nov 04, 2023</td>
+<td class="px-lg py-md text-outline">Yesterday</td>
+<td class="px-lg py-md text-right">
+<button class="text-tertiary-container hover:text-tertiary transition-colors font-label-caps text-[11px]">Revoke</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-variant/10 transition-colors">
+<td class="px-lg py-md">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-[18px] text-outline" data-icon="monitoring">monitoring</span>
+<span class="text-on-surface font-bold">Datadog Sink</span>
+</div>
+</td>
+<td class="px-lg py-md"><code class="bg-surface-variant/40 px-2 py-0.5 rounded text-[12px]">metrics-only</code></td>
+<td class="px-lg py-md text-outline">Dec 01, 2023</td>
+<td class="px-lg py-md text-outline">Never</td>
+<td class="px-lg py-md text-right">
+<button class="text-tertiary-container hover:text-tertiary transition-colors font-label-caps text-[11px]">Revoke</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</div>
+<!-- Secondary Auth Methods Section -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-gutter mt-xl">
+<div class="glass-panel rounded-xl p-md flex items-center gap-md hover:border-primary transition-all cursor-pointer group">
+<div class="w-12 h-12 bg-surface-container-high rounded flex items-center justify-center group-hover:bg-primary-container/20 transition-colors">
+<span class="material-symbols-outlined text-primary" data-icon="fingerprint">fingerprint</span>
+</div>
+<div>
+<h5 class="font-body-md text-body-md font-bold text-on-surface">WebAuthn / Passkeys</h5>
+<p class="text-[11px] text-outline">Biometric secure login</p>
+</div>
+</div>
+<div class="glass-panel rounded-xl p-md flex items-center gap-md hover:border-primary transition-all cursor-pointer group">
+<div class="w-12 h-12 bg-surface-container-high rounded flex items-center justify-center group-hover:bg-primary-container/20 transition-colors">
+<span class="material-symbols-outlined text-primary" data-icon="lock_reset">lock_reset</span>
+</div>
+<div>
+<h5 class="font-body-md text-body-md font-bold text-on-surface">2FA / MFA</h5>
+<p class="text-[11px] text-outline">Authenticator app active</p>
+</div>
+</div>
+<div class="glass-panel rounded-xl p-md flex items-center gap-md hover:border-primary transition-all cursor-pointer group">
+<div class="w-12 h-12 bg-surface-container-high rounded flex items-center justify-center group-hover:bg-primary-container/20 transition-colors">
+<span class="material-symbols-outlined text-primary" data-icon="terminal">terminal</span>
+</div>
+<div>
+<h5 class="font-body-md text-body-md font-bold text-on-surface">SSH Keys</h5>
+<p class="text-[11px] text-outline">2 Public keys registered</p>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="fixed bottom-0 w-full md:hidden z-50 border-t border-outline-variant bg-surface/90 backdrop-blur-lg flex justify-around items-center h-16 px-4">
+<div class="flex flex-col items-center justify-center text-on-surface-variant p-2 active:bg-surface-variant">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant p-2 active:bg-surface-variant">
+<span class="material-symbols-outlined" data-icon="list_alt">list_alt</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant p-2 active:bg-surface-variant">
+<span class="material-symbols-outlined" data-icon="monitoring">monitoring</span>
+</div>
+<div class="flex flex-col items-center justify-center text-primary bg-primary-container/20 rounded-xl p-2">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant p-2 active:bg-surface-variant">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</div>
+</nav>
+<script>
+        function simulateLogin() {
+            const output = document.getElementById('cli-output');
+            const success = document.getElementById('cli-success');
+            
+            output.innerHTML += `<p class="text-secondary mt-2">Authenticating via OIDC...</p>`;
+            
+            setTimeout(() => {
+                output.classList.add('opacity-40', 'transition-opacity', 'duration-500');
+                success.classList.remove('hidden');
+                success.classList.add('animate-in', 'fade-in', 'slide-in-from-bottom-2', 'duration-500');
+            }, 1000);
+        }
+
+        // Active State Logic: Highlight the correct nav item
+        // Already handled in the manual mapping above by matching the 'Settings' tab.
+    </script>
+</body></html>

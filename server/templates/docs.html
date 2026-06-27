@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>GoInstant Documentation | Developer Platform</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline-variant": "#464555",
+                        "on-primary-fixed-variant": "#3323cc",
+                        "primary": "#c3c0ff",
+                        "on-primary": "#1d00a5",
+                        "surface-container-low": "#111c2d",
+                        "surface-container-highest": "#2a3548",
+                        "tertiary-container": "#bc1d25",
+                        "surface-container-high": "#1f2a3c",
+                        "surface": "#081425",
+                        "on-secondary-container": "#00311f",
+                        "surface-tint": "#c3c0ff",
+                        "inverse-surface": "#d8e3fb",
+                        "tertiary": "#ffb3ad",
+                        "on-primary-container": "#dad7ff",
+                        "tertiary-fixed": "#ffdad7",
+                        "inverse-primary": "#4d44e3",
+                        "surface-container": "#152031",
+                        "surface-container-lowest": "#040e1f",
+                        "on-tertiary-fixed-variant": "#930013",
+                        "inverse-on-surface": "#263143",
+                        "surface-bright": "#2f3a4c",
+                        "secondary-container": "#00a572",
+                        "surface-dim": "#081425",
+                        "primary-fixed": "#e2dfff",
+                        "primary-container": "#4f46e5",
+                        "on-tertiary-fixed": "#410004",
+                        "on-primary-fixed": "#0f0069",
+                        "on-secondary": "#003824",
+                        "surface-variant": "#2a3548",
+                        "on-tertiary-container": "#ffd0cc",
+                        "tertiary-fixed-dim": "#ffb3ad",
+                        "secondary": "#4edea3",
+                        "secondary-fixed": "#6ffbbe",
+                        "on-background": "#d8e3fb",
+                        "on-surface-variant": "#c7c4d8",
+                        "on-secondary-fixed-variant": "#005236",
+                        "error-container": "#93000a",
+                        "error": "#ffb4ab",
+                        "on-error": "#690005",
+                        "secondary-fixed-dim": "#4edea3",
+                        "primary-fixed-dim": "#c3c0ff",
+                        "on-error-container": "#ffdad6",
+                        "on-surface": "#d8e3fb",
+                        "outline": "#918fa1",
+                        "on-secondary-fixed": "#002113",
+                        "on-tertiary": "#68000a",
+                        "background": "#081425"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "xl": "32px",
+                        "xs": "4px",
+                        "md": "16px",
+                        "margin-mobile": "16px",
+                        "sm": "8px",
+                        "lg": "24px",
+                        "sidebar-collapsed": "64px",
+                        "margin-desktop": "32px",
+                        "base": "4px",
+                        "sidebar-width": "260px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["JetBrains Mono"],
+                        "headline-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "code-sm": ["JetBrains Mono"],
+                        "code-md": ["JetBrains Mono"],
+                        "body-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "code-sm": ["12px", {"lineHeight": "18px", "fontWeight": "450"}],
+                        "code-md": ["14px", {"lineHeight": "22px", "fontWeight": "450"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #081425;
+            color: #d8e3fb;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .code-block {
+            background: #040e1f;
+            border: 1px solid #1E293B;
+            border-radius: 4px;
+        }
+        .terminal-header {
+            background: #0b172a;
+            border-bottom: 1px solid #1E293B;
+        }
+        .terminal-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #2a3548;
+            border-radius: 10px;
+        }
+        .glass-nav {
+            background: rgba(8, 20, 37, 0.7);
+            backdrop-filter: blur(12px);
+        }
+        .active-nav-border {
+            box-shadow: inset 2px 0 0 0 #c3c0ff;
+        }
+    </style>
+</head>
+<body class="flex min-h-screen">
+<!-- SideNavBar -->
+<nav class="fixed left-0 top-0 h-screen w-sidebar-width border-r border-outline-variant bg-surface hidden md:flex flex-col py-lg z-50">
+<div class="px-md mb-xl flex items-center gap-sm">
+<div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary text-[20px]" style="font-variation-settings: 'FILL' 1;">bolt</span>
+</div>
+<div>
+<div class="font-headline-md text-headline-md font-bold text-on-surface">GoInstant</div>
+<div class="text-[10px] font-label-caps tracking-widest text-primary/70 uppercase">Developer Platform</div>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto custom-scrollbar px-sm space-y-base">
+<div class="text-on-surface-variant font-label-caps text-[11px] px-md py-xs mt-md opacity-50 uppercase tracking-widest">Introduction</div>
+<a class="flex items-center gap-sm px-md py-sm text-primary border-l-2 border-primary bg-primary-container/10 cursor-pointer transition-colors font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined text-[18px]">dashboard</span> Dashboard
+            </a>
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-variant/50 cursor-pointer transition-colors font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined text-[18px]">description</span> Docs
+            </a>
+<div class="text-on-surface-variant font-label-caps text-[11px] px-md py-xs mt-md opacity-50 uppercase tracking-widest">Core Concept</div>
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-variant/50 cursor-pointer transition-colors font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined text-[18px]">language</span> Domains
+            </a>
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-variant/50 cursor-pointer transition-colors font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined text-[18px]">webhook</span> Webhooks
+            </a>
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-variant/50 cursor-pointer transition-colors font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined text-[18px]">folder_open</span> Files
+            </a>
+<div class="text-on-surface-variant font-label-caps text-[11px] px-md py-xs mt-md opacity-50 uppercase tracking-widest">Management</div>
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-variant/50 cursor-pointer transition-colors font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined text-[18px]">groups</span> Team
+            </a>
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-variant/50 cursor-pointer transition-colors font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined text-[18px]">payments</span> Billing
+            </a>
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-variant/50 cursor-pointer transition-colors font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined text-[18px]">settings</span> Settings
+            </a>
+<a class="flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-surface-variant/50 cursor-pointer transition-colors font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined text-[18px]">analytics</span> Status
+            </a>
+</div>
+<div class="px-md mt-lg space-y-base">
+<button class="w-full flex items-center justify-between px-md py-sm bg-surface-variant/30 hover:bg-surface-variant/50 text-on-surface text-body-sm rounded-lg transition-all border border-outline-variant">
+<span class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-[18px]">help</span> Support
+                </span>
+<span class="text-[10px] opacity-50">v2.4.1</span>
+</button>
+</div>
+</nav>
+<!-- Content Wrapper -->
+<div class="flex-1 flex flex-col md:ml-sidebar-width min-w-0">
+<!-- TopAppBar -->
+<header class="sticky top-0 z-40 w-full border-b border-outline-variant bg-surface/80 backdrop-blur-md flex justify-between items-center h-16 px-margin-desktop">
+<div class="flex items-center gap-lg flex-1 max-w-3xl">
+<div class="relative w-full max-w-md group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px] group-focus-within:text-primary transition-colors">search</span>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded-full py-2 pl-10 pr-12 text-body-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all" placeholder="Search documentation..." type="text"/>
+<div class="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1 items-center pointer-events-none">
+<kbd class="px-1.5 py-0.5 rounded border border-outline-variant bg-surface-container text-[10px] text-on-surface-variant font-code-sm">⌘</kbd>
+<kbd class="px-1.5 py-0.5 rounded border border-outline-variant bg-surface-container text-[10px] text-on-surface-variant font-code-sm">K</kbd>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<button class="hidden lg:flex items-center gap-xs text-on-surface-variant hover:text-primary transition-colors font-body-sm">
+<span class="material-symbols-outlined text-[20px]">help</span>
+</button>
+<button class="hidden lg:flex items-center gap-xs text-on-surface-variant hover:text-primary transition-colors font-body-sm">
+<span class="material-symbols-outlined text-[20px]">notifications</span>
+</button>
+<button class="px-md py-1.5 rounded bg-surface-container border border-outline-variant text-on-surface hover:bg-surface-variant transition-colors text-body-sm font-medium">Upgrade</button>
+<button class="px-md py-1.5 rounded bg-primary-container text-on-primary-container hover:brightness-110 transition-all text-body-sm font-semibold">New Project</button>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 flex w-full max-w-[1400px] mx-auto p-margin-desktop gap-xl">
+<!-- Article Body -->
+<article class="flex-1 min-w-0 max-w-4xl pb-32">
+<nav class="flex items-center gap-sm mb-lg text-on-surface-variant font-code-sm text-xs">
+<a class="hover:text-primary" href="#">Docs</a>
+<span>/</span>
+<a class="hover:text-primary" href="#">Getting Started</a>
+<span>/</span>
+<span class="text-primary">Introduction</span>
+</nav>
+<h1 class="font-headline-lg text-headline-lg text-on-surface mb-md">Quickstart Guide</h1>
+<p class="text-body-lg text-on-surface-variant mb-xl leading-relaxed">
+                    Deploy your first global endpoint in under 60 seconds. GoInstant provides a seamless developer experience to manage domains, webhooks, and serverless files with a single command.
+                </p>
+<!-- Section: Installation -->
+<section class="mb-xl pt-lg" id="getting-started">
+<div class="flex items-center gap-sm mb-md">
+<div class="p-2 rounded bg-primary/10 text-primary">
+<span class="material-symbols-outlined text-[20px]">download</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Getting Started</h2>
+</div>
+<p class="text-body-md text-on-surface-variant mb-md">Install the GoInstant CLI globally using npm or your preferred package manager to begin your journey.</p>
+<div class="code-block overflow-hidden mb-lg">
+<div class="terminal-header flex items-center justify-between px-md py-2">
+<div class="flex gap-2">
+<div class="terminal-dot bg-red-500/50"></div>
+<div class="terminal-dot bg-yellow-500/50"></div>
+<div class="terminal-dot bg-green-500/50"></div>
+</div>
+<div class="text-[10px] font-code-sm text-on-surface-variant opacity-50 uppercase tracking-widest">zsh — npm</div>
+</div>
+<div class="p-md font-code-md text-code-md text-secondary flex items-center gap-sm">
+<span class="text-primary opacity-50">$</span>
+<span>npm install -g @goinstant/cli</span>
+<button class="ml-auto p-1.5 rounded hover:bg-surface-variant text-on-surface-variant transition-colors" title="Copy to clipboard">
+<span class="material-symbols-outlined text-[18px]">content_copy</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Section: CLI Reference -->
+<section class="mb-xl pt-lg" id="cli-reference">
+<div class="flex items-center gap-sm mb-md">
+<div class="p-2 rounded bg-secondary/10 text-secondary">
+<span class="material-symbols-outlined text-[20px]">terminal</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-surface">CLI Command Reference</h2>
+</div>
+<p class="text-body-md text-on-surface-variant mb-md">Manage your deployments and local tunnels directly from your terminal.</p>
+<div class="space-y-lg">
+<!-- Command 1 -->
+<div class="p-md bg-surface-container rounded-lg border border-outline-variant">
+<h3 class="font-code-md text-code-md text-primary mb-sm">goinstant expose &lt;port&gt;</h3>
+<p class="text-body-sm text-on-surface-variant mb-md">Creates a secure public URL for your local development server.</p>
+<table class="w-full text-left text-body-sm border-collapse">
+<thead>
+<tr class="border-b border-outline-variant text-on-surface-variant font-label-caps text-[10px] uppercase">
+<th class="py-2 pr-4">Argument</th>
+<th class="py-2 pr-4">Description</th>
+<th class="py-2">Required</th>
+</tr>
+</thead>
+<tbody class="text-on-surface">
+<tr class="border-b border-outline-variant/30">
+<td class="py-3 font-code-sm text-secondary">port</td>
+<td class="py-3">The local port to tunnel</td>
+<td class="py-3 text-primary">Yes</td>
+</tr>
+<tr class="border-b border-outline-variant/30">
+<td class="py-3 font-code-sm text-secondary">--subdomain</td>
+<td class="py-3">Request a custom named subdomain</td>
+<td class="py-3">No</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Command 2 -->
+<div class="p-md bg-surface-container rounded-lg border border-outline-variant">
+<h3 class="font-code-md text-code-md text-primary mb-sm">goinstant deploy</h3>
+<p class="text-body-sm text-on-surface-variant mb-md">Uploads your current directory to the edge network for global distribution.</p>
+<table class="w-full text-left text-body-sm border-collapse">
+<thead>
+<tr class="border-b border-outline-variant text-on-surface-variant font-label-caps text-[10px] uppercase">
+<th class="py-2 pr-4">Flag</th>
+<th class="py-2 pr-4">Description</th>
+<th class="py-2">Default</th>
+</tr>
+</thead>
+<tbody class="text-on-surface">
+<tr class="border-b border-outline-variant/30">
+<td class="py-3 font-code-sm text-secondary">--prod</td>
+<td class="py-3">Promote deployment directly to production</td>
+<td class="py-3">false</td>
+</tr>
+<tr class="border-b border-outline-variant/30">
+<td class="py-3 font-code-sm text-secondary">--env</td>
+<td class="py-3">Override environment variables</td>
+<td class="py-3">null</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<!-- Section: SDK Integration -->
+<section class="mb-xl pt-lg" id="sdk-integration">
+<div class="flex items-center gap-sm mb-md">
+<div class="p-2 rounded bg-tertiary/10 text-tertiary">
+<span class="material-symbols-outlined text-[20px]">sdk</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-surface">SDK Integration</h2>
+</div>
+<div class="rounded-xl border border-outline-variant bg-surface-container overflow-hidden">
+<div class="flex border-b border-outline-variant bg-surface-container-high/50 overflow-x-auto">
+<button class="px-lg py-3 font-code-sm text-xs text-primary border-b-2 border-primary bg-primary/5 transition-all">Node.js</button>
+<button class="px-lg py-3 font-code-sm text-xs text-on-surface-variant hover:text-on-surface transition-all">Python</button>
+<button class="px-lg py-3 font-code-sm text-xs text-on-surface-variant hover:text-on-surface transition-all">Go</button>
+<button class="px-lg py-3 font-code-sm text-xs text-on-surface-variant hover:text-on-surface transition-all">Ruby</button>
+</div>
+<div class="p-md code-block border-none bg-transparent">
+<pre class="font-code-md text-code-md leading-relaxed"><span class="text-tertiary">import</span> { GoInstant } <span class="text-tertiary">from</span> <span class="text-secondary">'@goinstant/sdk'</span>;
+
+<span class="text-on-surface-variant">// Initialize the client</span>
+<span class="text-tertiary">const</span> client = <span class="text-tertiary">new</span> GoInstant({
+  apiKey: process.env.GOINSTANT_KEY,
+  region: <span class="text-secondary">'us-east-1'</span>
+});
+
+<span class="text-on-surface-variant">// Expose a local hook</span>
+<span class="text-tertiary">await</span> client.hooks.create({
+  target: <span class="text-secondary">'http://localhost:3000'</span>,
+  events: [<span class="text-secondary">'payment.success'</span>]
+});</pre>
+</div>
+</div>
+</section>
+</article>
+<!-- Table of Contents -->
+<aside class="hidden xl:block w-64 shrink-0">
+<div class="sticky top-24 space-y-md">
+<h4 class="font-label-caps text-[11px] text-on-surface-variant uppercase tracking-widest px-md">On this page</h4>
+<ul class="space-y-base text-body-sm">
+<li>
+<a class="block px-md py-1 text-primary border-l-2 border-primary active-nav-border transition-all" href="#getting-started">Getting Started</a>
+</li>
+<li>
+<a class="block px-md py-1 text-on-surface-variant hover:text-on-surface hover:border-l-2 hover:border-outline-variant transition-all" href="#cli-reference">CLI Command Reference</a>
+</li>
+<li>
+<a class="block px-md py-1 text-on-surface-variant hover:text-on-surface hover:border-l-2 hover:border-outline-variant transition-all" href="#sdk-integration">SDK Integration</a>
+</li>
+<li>
+<a class="block px-md py-1 text-on-surface-variant hover:text-on-surface hover:border-l-2 hover:border-outline-variant transition-all" href="#">Deployment Pipeline</a>
+</li>
+</ul>
+<div class="mt-xl p-md rounded-lg bg-surface-container-highest/40 border border-outline-variant/50">
+<div class="font-body-sm font-semibold mb-xs text-on-surface">Need help?</div>
+<p class="text-body-sm text-on-surface-variant mb-md">Join our Discord community or contact engineering.</p>
+<a class="text-primary text-body-sm font-medium flex items-center gap-xs hover:underline" href="#">
+                            Ask a Question <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</a>
+</div>
+</div>
+</aside>
+</main>
+</div>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="fixed bottom-0 w-full md:hidden z-50 border-t border-outline-variant bg-surface/90 backdrop-blur-lg flex justify-around items-center h-16 px-4">
+<a class="flex flex-col items-center justify-center text-primary bg-primary-container/20 rounded-xl p-2" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2" href="#">
+<span class="material-symbols-outlined">list_alt</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2" href="#">
+<span class="material-symbols-outlined">monitoring</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2" href="#">
+<span class="material-symbols-outlined">group</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2" href="#">
+<span class="material-symbols-outlined">menu</span>
+</a>
+</nav>
+<!-- Interactive Micro-interactions Script -->
+<script>
+        // Smooth scrolling for TOC
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if(target) {
+                    window.scrollTo({
+                        top: target.offsetTop - 100,
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+
+        // Copy functionality
+        document.querySelectorAll('.code-block button').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const icon = this.querySelector('span');
+                const originalIcon = icon.innerText;
+                icon.innerText = 'check';
+                icon.classList.add('text-secondary');
+                
+                setTimeout(() => {
+                    icon.innerText = originalIcon;
+                    icon.classList.remove('text-secondary');
+                }, 2000);
+            });
+        });
+
+        // Cmd+K focus simulation
+        window.addEventListener('keydown', (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                document.querySelector('input[type="text"]').focus();
+            }
+        });
+    </script>
+</body></html>

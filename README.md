@@ -212,3 +212,50 @@ graph TD
 ### E. Instruksi untuk AI Code Assistant
 - Setiap kali perintah `expose` atau `deploy` dijalankan tanpa menyertakan token registrasi (atau config lokal belum dibuat), sistem wajib membuat akun Anonymous otomatis di database SQLite dengan UUID acak, lalu memberikan token temporer tersebut kepada CLI untuk disimpan di `~/.goinstant/config.json`.
 - Kunci keamanan autentikasi berada pada kecocokan antara token di tabel `users` dan kepemilikan baris data di tabel `subdomains`. Jangan pernah mengizinkan mutasi data (baik update file maupun update domain) jika token tidak cocok dengan pemilik data aslinya.
+
+---
+
+## 8. Stitching & Developer Suite Implementation Summary
+
+We have fully integrated the custom developer console UI/UX mockups, built the backend APIs, enabled automated credentials config files, and enforced strict subdomain ownership validations.
+
+### A. Template Directory & Embed Structure
+All 11 console pages are stored inside [server/templates](file:///d:/docker-server/go-online/server/templates) and embedded directly into the Go binary via `//go:embed templates/*` inside [dashboard.go](file:///d:/docker-server/go-online/server/dashboard.go):
+- `landing.html`: Public Landing Page & Binary Downloads
+- `login.html`: API Token Access Gate
+- `dashboard.html`: Tunnel Status and Bandwidth Summaries
+- `domains.html`: Subdomain & Whitelabel CNAME Manager
+- `webhooks.html`: Webhook Log Streams & Replay Engine
+- `files.html`: Static Deployment rolled histories (R2)
+- `settings.html`: API Tokens & Credentials manager
+- `audit.html`: Security Audit Logs
+- `analytics.html`: Traffic aggregate bandwidth graphs
+- `status.html`: Latency, Uptime & health page
+- `docs.html`: Dynamic interactive CLI documentation
+
+### B. Core API & ServeMux Router
+A central router registers all endpoints inside `RegisterDashboardRoutes(mux)`:
+1. **Protected Page Router**: Check `goinstant_session` cookie. If not validated, redirect user to `/login`.
+2. **Auth Endpoints**:
+   - `/api/auth/login`: Verifies user API Token and returns a HTTPOnly cookie.
+   - `/api/auth/logout`: Clears session cookies.
+3. **Dynamic AJAX REST APIs**:
+   - `/api/dashboard`: Aggregated metrics.
+   - `/api/domains`: User subdomains list.
+   - `/api/domains/add`: Bind CNAME custom domains (validated for ownership).
+   - `/api/webhooks`: Captured tunnel traffic headers & bodies.
+   - `/api/webhooks/replay`: Forwards historical webhook request streams over QUIC.
+   - `/api/files`: R2 versioned static deployments list.
+   - `/api/audit`: Action logging.
+   - `/api/analytics`: Time-series graph dataset.
+
+### C. Client Configuration & Token Auto-Save
+- The client stores credentials at `~/.goinstant/config.json`.
+- When running `expose` or `deploy` without a token, the server automatically registers a new Anonymous user, inserts a token UUID in SQLite, and returns it in the handshake response (or `X-GoInstant-Token` header).
+- The client CLI intercepts this token and automatically saves it locally, ensuring immediate zero-config passwordless updates.
+
+### D. Subdomain Ownership Enforcements
+- **On Handshake (Expose)**: The server verifies if the subdomain is owned by another user before opening the QUIC gateway. If the subdomain is free, it binds it to the current user token on-demand.
+- **On Deploy (Static)**: Server ensures the requester token matches the registered subdomain owner. If not, it rejects with `Subdomain already taken by another user` (HTTP 403).
+- **Security Logs**: Actions are recorded under `audit_events` in the SQLite database.
+

@@ -97,6 +97,11 @@ func (c *TunnelClient) runHandshake(conn *quic.Conn) error {
 		return fmt.Errorf("server rejected handshake: %s", resp.Error)
 	}
 
+	if resp.Token != "" {
+		log.Printf("[Client] Server assigned new session token: %s. Saving to ~/.goinstant/config.json", resp.Token)
+		_ = common.SaveLocalToken(resp.Token)
+	}
+
 	return nil
 }
 

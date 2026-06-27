@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>GoInstant | Deploy &amp; Tunnel Instantly</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@450;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error-container": "#93000a",
+                        "on-secondary-fixed": "#002113",
+                        "on-tertiary-fixed-variant": "#930013",
+                        "on-tertiary-fixed": "#410004",
+                        "tertiary": "#ffb3ad",
+                        "inverse-on-surface": "#263143",
+                        "error": "#ffb4ab",
+                        "on-secondary-container": "#00311f",
+                        "on-error-container": "#ffdad6",
+                        "primary-container": "#4f46e5",
+                        "secondary-container": "#00a572",
+                        "surface-dim": "#081425",
+                        "on-primary-fixed-variant": "#3323cc",
+                        "surface-container-lowest": "#040e1f",
+                        "on-surface": "#d8e3fb",
+                        "secondary": "#4edea3",
+                        "on-primary": "#1d00a5",
+                        "surface-container-low": "#111c2d",
+                        "outline-variant": "#464555",
+                        "on-secondary-fixed-variant": "#005236",
+                        "secondary-fixed": "#6ffbbe",
+                        "secondary-fixed-dim": "#4edea3",
+                        "on-tertiary-container": "#ffd0cc",
+                        "surface-container": "#152031",
+                        "on-background": "#d8e3fb",
+                        "tertiary-fixed-dim": "#ffb3ad",
+                        "outline": "#918fa1",
+                        "on-primary-container": "#dad7ff",
+                        "on-error": "#690005",
+                        "tertiary-fixed": "#ffdad7",
+                        "primary-fixed": "#e2dfff",
+                        "inverse-primary": "#4d44e3",
+                        "surface-tint": "#c3c0ff",
+                        "tertiary-container": "#bc1d25",
+                        "on-surface-variant": "#c7c4d8",
+                        "inverse-surface": "#d8e3fb",
+                        "surface-variant": "#2a3548",
+                        "on-secondary": "#003824",
+                        "surface-container-high": "#1f2a3c",
+                        "surface": "#081425",
+                        "surface-container-highest": "#2a3548",
+                        "surface-bright": "#2f3a4c",
+                        "on-tertiary": "#68000a",
+                        "on-primary-fixed": "#0f0069",
+                        "primary": "#c3c0ff",
+                        "primary-fixed-dim": "#c3c0ff",
+                        "background": "#081425"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "xl": "32px",
+                        "margin-desktop": "32px",
+                        "sidebar-collapsed": "64px",
+                        "margin-mobile": "16px",
+                        "sm": "8px",
+                        "md": "16px",
+                        "lg": "24px",
+                        "base": "4px",
+                        "sidebar-width": "260px",
+                        "xs": "4px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["JetBrains Mono"],
+                        "body-lg": ["Inter"],
+                        "code-sm": ["JetBrains Mono"],
+                        "body-sm": ["Inter"],
+                        "code-md": ["JetBrains Mono"],
+                        "headline-lg": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "display-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "code-sm": ["12px", {"lineHeight": "18px", "fontWeight": "450"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "code-md": ["14px", {"lineHeight": "22px", "fontWeight": "450"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(11, 15, 25, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .terminal-header-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        .typing-cursor {
+            border-right: 2px solid #c3c0ff;
+            animation: blink 0.8s step-end infinite;
+        }
+        @keyframes blink { 50% { border-color: transparent; } }
+        
+        .code-container::-webkit-scrollbar {
+            width: 4px;
+        }
+        .code-container::-webkit-scrollbar-thumb {
+            background: #464555;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md selection:bg-primary-container selection:text-on-primary-container overflow-x-hidden">
+<header class="sticky top-0 z-40 w-full border-b border-outline-variant bg-surface/80 backdrop-blur-md">
+<div class="flex justify-between items-center h-16 px-margin-mobile md:px-margin-desktop max-w-7xl mx-auto">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-secondary text-headline-md" style="font-variation-settings: 'FILL' 1;">bolt</span>
+<span class="font-headline-md text-headline-md font-bold text-on-surface tracking-tight">GoInstant</span>
+</div>
+<nav class="hidden md:flex items-center gap-lg">
+<a class="font-body-sm text-body-sm text-primary font-bold transition-colors" href="#">Home</a>
+<a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Docs</a>
+<a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Status</a>
+<div class="h-4 w-px bg-outline-variant mx-2"></div>
+<button class="p-sm text-on-surface-variant hover:bg-surface-variant/50 rounded-xl transition-all active:scale-95" id="theme-toggle">
+<span class="material-symbols-outlined">dark_mode</span>
+</button>
+<button class="px-md py-base bg-primary-container text-on-primary-container font-label-caps text-label-caps rounded-xl hover:opacity-90 active:scale-95 transition-all">
+                    UPGRADE
+                </button>
+</nav>
+<button class="md:hidden p-sm text-on-surface">
+<span class="material-symbols-outlined">menu</span>
+</button>
+</div>
+</header>
+<main class="relative">
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[600px] overflow-hidden pointer-events-none opacity-20">
+
+</div>
+<section class="relative pt-xl pb-24 px-margin-mobile md:px-margin-desktop max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-xl items-center">
+<div class="lg:col-span-6 space-y-lg">
+<div class="inline-flex items-center gap-sm px-md py-xs bg-secondary-container/10 border border-secondary-container/30 rounded-full">
+<span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+<span class="font-label-caps text-label-caps text-secondary uppercase">v2.4.0 Now Live</span>
+</div>
+<h1 class="font-display-lg text-display-lg text-on-surface leading-none tracking-tighter">
+                    Deploy &amp; Tunnel <span class="text-primary italic">Instantly</span>.
+                </h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-lg">
+                    No Config, Just Go. Connect your local environment to the world or ship your binaries in seconds with our high-performance edge network.
+                </p>
+<div class="flex flex-col sm:flex-row gap-md pt-md">
+<div class="flex-1 max-w-md group">
+<div class="relative flex items-center bg-surface-container-low border border-outline-variant rounded-xl overflow-hidden px-md py-sm focus-within:border-primary transition-all">
+<span class="font-code-md text-code-md text-outline mr-sm">$</span>
+<input class="bg-transparent border-none focus:ring-0 font-code-md text-code-md text-on-surface w-full cursor-default outline-none" id="install-cmd" readonly="" value="curl -sS https://goinstant.my.id/install.sh | bash"/>
+<button class="ml-sm p-xs hover:bg-surface-variant rounded-lg text-on-surface-variant hover:text-primary transition-all" onclick="copyInstall()">
+<span class="material-symbols-outlined text-[20px]">content_copy</span>
+</button>
+</div>
+<p class="mt-sm font-label-caps text-label-caps text-outline text-[10px] ml-md">ONE-LINE INSTALLATION SNIPPET</p>
+</div>
+</div>
+</div>
+<div class="lg:col-span-6">
+<div class="glass-panel rounded-xl shadow-2xl overflow-hidden border border-outline-variant/30">
+<div class="bg-surface-container-highest/50 px-md py-sm flex items-center justify-between border-b border-outline-variant/30">
+<div class="flex gap-xs">
+<div class="terminal-header-dot bg-[#FF5F56]"></div>
+<div class="terminal-header-dot bg-[#FFBD2E]"></div>
+<div class="terminal-header-dot bg-[#27C93F]"></div>
+</div>
+<div class="flex gap-md">
+<button class="font-label-caps text-label-caps text-primary border-b-2 border-primary pb-1 transition-all" id="tab-btn-1" onclick="switchTab(1)">EXPOSE</button>
+<button class="font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface pb-1 transition-all" id="tab-btn-2" onclick="switchTab(2)">DEPLOY</button>
+</div>
+</div>
+<div class="p-lg font-code-md text-code-md min-h-[280px] bg-[#0B0F19] code-container overflow-y-auto">
+<div class="terminal-block" id="terminal-content-1">
+<div class="flex gap-sm">
+<span class="text-secondary">$</span>
+<span class="text-on-surface typing-cursor" id="type-1">goinstant expose 8080</span>
+</div>
+<div class="mt-sm opacity-0 transition-opacity duration-500 delay-[1.5s] flex flex-col gap-xs" id="output-1">
+<span class="text-outline">Checking port 8080 availability... Done.</span>
+<span class="text-outline">Initializing secure handshake... Done.</span>
+<span class="text-secondary font-bold">-&gt; Secure Tunnel Active: <a class="underline" href="#">https://toko-syafri.goinstant.my.id</a></span>
+<span class="text-outline mt-sm">Forwarding: localhost:8080 <span class="material-symbols-outlined text-[14px]">sync_alt</span> edge-node-04.goinstant.io</span>
+</div>
+</div>
+<div class="terminal-block hidden" id="terminal-content-2">
+<div class="flex gap-sm">
+<span class="text-secondary">$</span>
+<span class="text-on-surface">goinstant deploy</span>
+</div>
+<div class="mt-sm flex flex-col gap-xs">
+<span class="text-outline">Compressing artifacts (4.2MB)...</span>
+<div class="w-full h-1 bg-surface-variant rounded-full mt-xs overflow-hidden">
+<div class="h-full bg-primary-container w-[75%] transition-all duration-1000"></div>
+</div>
+<span class="text-outline mt-xs">Uploading to global edge registry...</span>
+<span class="text-primary font-bold">-&gt; Deployed! Live URL: <a class="underline" href="#">https://portofolio.goinstant.my.id</a></span>
+<span class="text-outline text-xs italic mt-xs">Traffic will be distributed via Edge CDN.</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section class="py-xl px-margin-mobile md:px-margin-desktop max-w-7xl mx-auto">
+<div class="mb-lg text-center lg:text-left">
+<h2 class="font-headline-md text-headline-md text-on-surface font-bold tracking-tight">Binary Downloads</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Choose your architecture and get started in seconds.</p>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-md">
+<div class="glass-panel p-lg rounded-xl hover:border-primary transition-colors cursor-pointer group">
+<div class="mb-md">
+<span class="material-symbols-outlined text-display-lg text-on-surface-variant group-hover:text-primary transition-colors">window</span>
+</div>
+<h3 class="font-headline-sm text-headline-md font-bold mb-xs">Windows</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-lg">x64 / ARM64 MSI &amp; EXE</p>
+<button class="w-full py-sm bg-surface-variant hover:bg-surface-container-high text-on-surface font-label-caps text-label-caps rounded-lg transition-all flex items-center justify-center gap-xs">
+                        DOWNLOAD <span class="material-symbols-outlined text-[16px]">download</span>
+</button>
+</div>
+<div class="glass-panel p-lg rounded-xl border-primary bg-primary-container/5 hover:bg-primary-container/10 transition-colors cursor-pointer group">
+<div class="mb-md">
+<span class="material-symbols-outlined text-display-lg text-primary">terminal</span>
+</div>
+<h3 class="font-headline-sm text-headline-md font-bold mb-xs">Linux</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-lg">Deb, RPM, Static Binary</p>
+<button class="w-full py-sm bg-primary-container text-on-primary-container font-label-caps text-label-caps rounded-lg transition-all flex items-center justify-center gap-xs">
+                        DOWNLOAD <span class="material-symbols-outlined text-[16px]">download</span>
+</button>
+</div>
+<div class="glass-panel p-lg rounded-xl hover:border-primary transition-colors cursor-pointer group">
+<div class="mb-md">
+<span class="material-symbols-outlined text-display-lg text-on-surface-variant group-hover:text-primary transition-colors">laptop_mac</span>
+</div>
+<h3 class="font-headline-sm text-headline-md font-bold mb-xs">macOS</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-lg">Apple Silicon (M1/M2/M3)</p>
+<button class="w-full py-sm bg-surface-variant hover:bg-surface-container-high text-on-surface font-label-caps text-label-caps rounded-lg transition-all flex items-center justify-center gap-xs">
+                        DOWNLOAD <span class="material-symbols-outlined text-[16px]">download</span>
+</button>
+</div>
+<div class="glass-panel p-lg rounded-xl hover:border-primary transition-colors cursor-pointer group">
+<div class="mb-md">
+<span class="material-symbols-outlined text-display-lg text-on-surface-variant group-hover:text-primary transition-colors">desktop_mac</span>
+</div>
+<h3 class="font-headline-sm text-headline-md font-bold mb-xs">macOS</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-lg">Intel (x64) Homebrew</p>
+<button class="w-full py-sm bg-surface-variant hover:bg-surface-container-high text-on-surface font-label-caps text-label-caps rounded-lg transition-all flex items-center justify-center gap-xs">
+                        DOWNLOAD <span class="material-symbols-outlined text-[16px]">download</span>
+</button>
+</div>
+</div>
+</section>
+<section class="py-xl bg-surface-container-low/30 border-y border-outline-variant/30">
+<div class="max-w-7xl mx-auto px-margin-mobile md:px-margin-desktop flex flex-wrap justify-around gap-lg opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
+<span class="font-display-lg text-headline-md font-bold text-outline opacity-50">NODE.JS</span>
+<span class="font-display-lg text-headline-md font-bold text-outline opacity-50">DOCKER</span>
+<span class="font-display-lg text-headline-md font-bold text-outline opacity-50">PYTHON</span>
+<span class="font-display-lg text-headline-md font-bold text-outline opacity-50">GO</span>
+<span class="font-display-lg text-headline-md font-bold text-outline opacity-50">RUST</span>
+</div>
+</section>
+</main>
+<footer class="py-xl px-margin-mobile md:px-margin-desktop border-t border-outline-variant bg-surface">
+<div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-xl">
+<div class="space-y-md col-span-1 md:col-span-1">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-secondary text-headline-md" style="font-variation-settings: 'FILL' 1;">bolt</span>
+<span class="font-headline-md text-headline-md font-bold text-on-surface">GoInstant</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">The fastest way to take local to global. Secure tunnels and instant deployments for the modern engineer.</p>
+</div>
+<div class="space-y-sm">
+<h4 class="font-label-caps text-label-caps text-on-surface uppercase mb-md">Product</h4>
+<ul class="space-y-xs font-body-sm text-body-sm text-on-surface-variant">
+<li><a class="hover:text-primary transition-colors" href="#">Changelog</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Documentation</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Pricing</a></li>
+</ul>
+</div>
+<div class="space-y-sm">
+<h4 class="font-label-caps text-label-caps text-on-surface uppercase mb-md">Company</h4>
+<ul class="space-y-xs font-body-sm text-body-sm text-on-surface-variant">
+<li><a class="hover:text-primary transition-colors" href="#">About Us</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Blog</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Contact</a></li>
+</ul>
+</div>
+<div class="space-y-sm">
+<h4 class="font-label-caps text-label-caps text-on-surface uppercase mb-md">Legal</h4>
+<ul class="space-y-xs font-body-sm text-body-sm text-on-surface-variant">
+<li><a class="hover:text-primary transition-colors" href="#">Privacy Policy</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Terms of Service</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Security</a></li>
+</ul>
+</div>
+</div>
+<div class="max-w-7xl mx-auto mt-xl pt-lg border-t border-outline-variant/30 flex flex-col md:flex-row justify-between items-center gap-md opacity-50">
+<p class="font-code-sm text-code-sm">© 2024 GoInstant Inc. Built for the high-speed dev.</p>
+<div class="flex gap-md">
+<span class="material-symbols-outlined text-[20px]">terminal</span>
+<span class="material-symbols-outlined text-[20px]">code</span>
+<span class="material-symbols-outlined text-[20px]">public</span>
+</div>
+</div>
+</footer>
+<script>
+        function copyInstall() {
+            const copyText = document.getElementById("install-cmd");
+            navigator.clipboard.writeText(copyText.value);
+            
+            const btn = event.currentTarget;
+            const originalIcon = btn.innerHTML;
+            btn.innerHTML = '<span class="material-symbols-outlined text-[20px] text-secondary">check</span>';
+            setTimeout(() => {
+                btn.innerHTML = originalIcon;
+            }, 2000);
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.terminal-block').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`terminal-content-${tabId}`).classList.remove('hidden');
+            
+            document.querySelectorAll('[id^="tab-btn-"]').forEach(btn => {
+                btn.classList.remove('text-primary', 'border-b-2', 'border-primary');
+                btn.classList.add('text-on-surface-variant');
+            });
+            
+            const activeBtn = document.getElementById(`tab-btn-${tabId}`);
+            activeBtn.classList.add('text-primary', 'border-b-2', 'border-primary');
+            activeBtn.classList.remove('text-on-surface-variant');
+
+            if(tabId === 1) {
+                document.getElementById('output-1').classList.remove('opacity-0');
+            }
+        }
+
+        // Initialize terminal animation
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                document.getElementById('output-1').classList.remove('opacity-0');
+            }, 2000);
+        });
+
+        // Simple light/dark toggle logic
+        document.getElementById('theme-toggle').addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            const icon = document.querySelector('#theme-toggle .material-symbols-outlined');
+            icon.innerText = document.documentElement.classList.contains('dark') ? 'dark_mode' : 'light_mode';
+        });
+    </script>
+</body></html>
