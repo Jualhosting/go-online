@@ -211,14 +211,16 @@ func (c *TunnelClient) handleHTTPStream(stream *quic.Stream) {
 		}
 		localConn.Write(reqDump)
 
-		// Direct TCP bridge
+		// Direct TCP bridge with active teardown to prevent leaks
 		errChan := make(chan error, 2)
 		go func() {
-			_, err := io.Copy(localConn, reader) // copy from stream buffer
+			_, err := io.Copy(localConn, reader)
+			localConn.Close()
 			errChan <- err
 		}()
 		go func() {
-			_, err := io.Copy(stream, localConn) // copy back to stream
+			_, err := io.Copy(stream, localConn)
+			stream.CancelRead(0)
 			errChan <- err
 		}()
 		<-errChan
