@@ -14,13 +14,23 @@ RUN go mod download
 COPY . .
 
 # Build the server binary
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o mtm main.go
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o mtm main.go
 
 # Build client binaries for cross-platform download
 RUN mkdir -p downloads
-RUN CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-w -s" -o downloads/goinstant-windows.exe main.go
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o downloads/goinstant-linux main.go
-RUN CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-w -s" -o downloads/goinstant-darwin main.go
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-w -s" -o downloads/goinstant-windows.exe main.go
+
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o downloads/goinstant-linux main.go
+
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-w -s" -o downloads/goinstant-darwin main.go
 
 # Stage 2: Minimal runtime image
 FROM alpine:3.19
