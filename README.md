@@ -252,10 +252,11 @@ A central router registers all endpoints inside `RegisterDashboardRoutes(mux)`:
    - `/api/billing/upgrade` (POST): Generates a unique invoice reference (`INV-timestamp`), requests transaction creation on Paymenku API (`https://paymenku.com/api/v1/transaction/create`), saves the pending transaction, and returns the virtual account or QRIS payment link to the frontend.
    - `/webhook/payment` (POST): Receives callbacks when transactions change status. Validates payload integrity via HMAC-SHA256 signature checks using the configured Webhook Secret. Automatically upgrades successful buyers to the PRO plan in the SQLite database.
 
-### C. Client Configuration & Token Auto-Save
+### C. Client Configuration, Token Auto-Save & Compile Optimization
 - The client stores credentials at `~/.goinstant/config.json`.
 - When running `expose` or `deploy` without a token, the server automatically registers a new Anonymous user, inserts a token UUID in SQLite, and returns it in the handshake response (or `X-GoInstant-Token` header).
 - The client CLI intercepts this token and automatically saves it locally, ensuring immediate zero-config passwordless updates.
+- **Client Compile Optimization**: The client CLI is compiled with `-tags client` (`main_client_stub.go`) which removes all large server dependencies (SQLite transpiler, AWS R2 SDK, embedded HTML templates). This reduces the download size by **70%** (from **27.8 MB** to **8.6 MB**).
 
 ### D. Subdomain Ownership Enforcements
 - **On Handshake (Expose)**: The server verifies if the subdomain is owned by another user before opening the QUIC gateway. If the subdomain is free, it binds it to the current user token on-demand.
