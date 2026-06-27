@@ -112,7 +112,8 @@ func (s *TunnelServer) Start() error {
 
 	// 2. Start QUIC Listener
 	listener, err := quic.ListenAddr(s.Addr, quicTLSConfig, &quic.Config{
-		KeepAlivePeriod: 10 * time.Second,
+		KeepAlivePeriod: 5 * time.Second,
+		MaxIdleTimeout:  30 * time.Second,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to listen on QUIC: %w", err)
@@ -422,6 +423,11 @@ func (q *quicConnWrap) SetReadDeadline(t time.Time) error {
 
 func (q *quicConnWrap) SetWriteDeadline(t time.Time) error {
 	return q.Stream.SetWriteDeadline(t)
+}
+
+func (q *quicConnWrap) Close() error {
+	q.Stream.CancelRead(0)
+	return q.Stream.Close()
 }
 
 func (s *TunnelServer) handleDeploy(w http.ResponseWriter, r *http.Request) {

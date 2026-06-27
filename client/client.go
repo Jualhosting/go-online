@@ -46,7 +46,8 @@ func (c *TunnelClient) Start() {
 	for {
 		log.Printf("[Client] Connecting to tunnel server at %s...", c.ServerAddr)
 		conn, err := quic.DialAddr(context.Background(), c.ServerAddr, tlsConf, &quic.Config{
-			KeepAlivePeriod: 10 * time.Second,
+			KeepAlivePeriod: 5 * time.Second,
+			MaxIdleTimeout:  30 * time.Second,
 		})
 		if err != nil {
 			log.Printf("[Client] Connection failed: %v. Retrying in 5 seconds...", err)
