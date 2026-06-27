@@ -325,7 +325,29 @@ func (s *TunnelServer) startHTTPListeners() {
 
 	mux := http.NewServeMux()
 	s.RegisterDashboardRoutes(mux)
-	handler := mux
+	
+	// Host-based router: ensure subdomains bypass console routes (like /login or /settings)
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		host := r.Host
+		if h, _, err := net.SplitHostPort(host); err == nil {
+			host = h
+		}
+		subdomain := s.extractSubdomain(host)
+		lookupKey := host
+		if subdomain != "" {
+			lookupKey = subdomain
+		}
+		lookupKey = strings.ToLower(lookupKey)
+
+		// If it's a client subdomain, bypass all dashboard routes and forward directly to tunnel traffic
+		if lookupKey != strings.ToLower(s.Domain) && lookupKey != "localhost" && lookupKey != "127.0.0.1" {
+			s.handleClientTraffic(w, r)
+			return
+		}
+
+		// Otherwise, serve standard developer console routes
+		mux.ServeHTTP(w, r)
+	})
 
 	// Start Port 80 (HTTP) redirect or proxy server
 	go func() {
