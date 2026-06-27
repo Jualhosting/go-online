@@ -263,3 +263,31 @@ A central router registers all endpoints inside `RegisterDashboardRoutes(mux)`:
 - **On Deploy (Static)**: Server ensures the requester token matches the registered subdomain owner. If not, it rejects with `Subdomain already taken by another user` (HTTP 403).
 - **Security Logs**: Actions are recorded under `audit_events` in the SQLite database.
 
+---
+
+## 9. Recent Debugging, Optimization, and Problem Resolution (June 28, 2026)
+
+We implemented critical stability and networking updates to resolve firewall blocks, dynamic SSL certificate issues, WebSocket stream leaks, and path collisions between subdomains and the developer console.
+
+### A. Network & Firewall Optimization
+- **Port 443 UDP Control Plane Migration**: Shifted the QUIC control plane port from UDP `9000` to UDP `443` (shared safely with HTTP/HTTPS TCP traffic on the host). Port `443/udp` bypasses strict local ISP throttles and corporate firewalls that block custom high-range UDP ports.
+- **Cloudflare DNS Only Recommendation**: Solved `CRYPTO_ERROR 0x178 (remote): tls: no application protocol` ALPN mismatch errors by verifying that the domain and wildcard subdomains must be set to **DNS Only** (Grey Cloud) on Cloudflare. This prevents Cloudflare Proxy (Orange Cloud) from intercepting and terminating TLS handshakes for our custom `mtm-protocol` ALPN.
+- **QUIC Keepalive Tuning**: Tightened `KeepAlivePeriod` to `5 * time.Second` and reverted strict `MaxIdleTimeout` rules to allow resilient, long-lived UDP sessions through consumer NAT gateways.
+- **Host UDP Buffer Tuning**: Identified and resolved UDP packet drops under high throughput (e.g. logs streaming). Documented sysctl commands to increase system UDP buffer sizes on Linux VPS host systems:
+  ```bash
+  sudo sysctl -w net.core.rmem_max=7500000
+  sudo sysctl -w net.core.wmem_max=7500000
+  ```
+
+### B. CertMagic SSL Engine Resolution
+- **Self-Referential Cache Closure**: Resolved `unable to get configuration to manage certificate; unable to renew ... has nil cache` issues in CertMagic's on-demand TLS engine.
+- Re-architected [server/certs.go](file:///d:/docker-server/go-online/server/certs.go) using a pointer-closure technique that binds the dynamic config to `certmagic.NewCache` options. This allows CertMagic background renewal jobs to successfully match configurations and download certificates from Let's Encrypt.
+
+### C. WebSocket Stream Management & Teardown
+- **Active Bridge Teardown**: Fixed `proxy error: context canceled` and `timeout` freezes during live logs streaming (Portainer).
+- Updated [client/client.go](file:///d:/docker-server/go-online/client/client.go) to actively close `localConn` and call `stream.CancelRead(0)` immediately when either side of the WebSocket/TCP bridge disconnects. This resolves goroutine leaks and prevents stream IDs exhaustion in QUIC.
+
+### D. Host-Based Routing Middleware
+- **Path Collision Resolution**: Fixed a routing bug where client subdomains attempting to load dashboard paths (such as `my-9router.goinstant.my.id/login`) loaded the GoInstant platform login instead.
+- Implemented a Host-based routing middleware in [server/server.go](file:///d:/docker-server/go-online/server/server.go). Any incoming request on a client subdomain now completely bypasses the main GoInstant console routing tables and is directly proxied to the tunnel client, solving path collisions permanently.
+
