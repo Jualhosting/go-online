@@ -68,7 +68,15 @@ func GetTLSConfig(domain string, email string) (*tls.Config, error) {
 		},
 	}
 
-	return certmagic.NewDefault().TLSConfig(), nil
+	var magic *certmagic.Config
+	magicCache := certmagic.NewCache(certmagic.CacheOptions{
+		GetConfigForCert: func(cert certmagic.Certificate) (*certmagic.Config, error) {
+			return magic, nil
+		},
+	})
+	magic = certmagic.New(magicCache, certmagic.Default)
+
+	return magic.TLSConfig(), nil
 }
 
 // GenerateSelfSignedConfig creates a standard self-signed tls.Config for local testing.
