@@ -180,9 +180,15 @@
                     No Config, Just Go. Connect your local environment to the world or ship your binaries in seconds with our high-performance edge network.
                 </p>
 <div class="space-y-md pt-md">
-    <div class="space-y-xs">
-        <label class="font-label-caps text-xs text-on-surface-variant uppercase font-bold tracking-wider">1. Enter Desired Subdomain</label>
-        <input id="subdomain-input-box" class="w-full max-w-md bg-surface-container-low border border-outline-variant rounded-lg px-md py-sm text-body-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-code-sm text-primary" placeholder="my-site" value="my-site"/>
+    <div class="flex gap-md max-w-md">
+        <div class="flex-[3] space-y-xs">
+            <label class="font-label-caps text-xs text-on-surface-variant uppercase font-bold tracking-wider">1. Enter Desired Subdomain</label>
+            <input id="subdomain-input-box" class="w-full bg-surface-container-low border border-outline-variant rounded-lg px-md py-sm text-body-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-code-sm text-primary" placeholder="my-site"/>
+        </div>
+        <div id="port-input-container" class="flex-[1] space-y-xs">
+            <label class="font-label-caps text-xs text-on-surface-variant uppercase font-bold tracking-wider">Port</label>
+            <input id="port-input-box" class="w-full bg-surface-container-low border border-outline-variant rounded-lg px-md py-sm text-body-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-code-sm text-primary" placeholder="8080" value="8080"/>
+        </div>
     </div>
     
     <div class="space-y-sm max-w-md">
@@ -370,7 +376,10 @@
             }, 2000);
         }
 
+        let currentTab = 1;
+
         function switchTab(tabId) {
+            currentTab = tabId;
             document.querySelectorAll('.terminal-block').forEach(el => el.classList.add('hidden'));
             document.getElementById(`terminal-content-${tabId}`).classList.remove('hidden');
             
@@ -383,8 +392,16 @@
             activeBtn.classList.add('text-primary', 'border-b-2', 'border-primary');
             activeBtn.classList.remove('text-on-surface-variant');
 
-            if(tabId === 1) {
+            const portContainer = document.getElementById('port-input-container');
+            if (tabId === 1) {
                 document.getElementById('output-1').classList.remove('opacity-0');
+                if (portContainer) portContainer.classList.remove('hidden');
+            } else {
+                if (portContainer) portContainer.classList.add('hidden');
+            }
+            
+            if (window.updateCommand) {
+                window.updateCommand();
             }
         }
 
@@ -395,6 +412,7 @@
             }, 2000);
 
             const inputSub = document.getElementById("subdomain-input-box");
+            const inputPort = document.getElementById("port-input-box");
             const cmdWin = document.getElementById("cmd-win");
             const cmdUnix = document.getElementById("cmd-unix");
 
@@ -410,14 +428,22 @@
             const defaultSub = generateRandomSubdomain();
             inputSub.value = defaultSub;
 
-            function updateCommand() {
+            window.updateCommand = function() {
                 const sub = inputSub.value.trim().toLowerCase().replace(/[^a-z0-9\-]/g, "") || defaultSub;
-                cmdWin.value = `iwr -useb "https://goinstant.my.id/in.ps1?sub=${sub}" | iex`;
-                cmdUnix.value = `curl -sS "https://goinstant.my.id/in.sh?sub=${sub}" | bash`;
-            }
+                const port = inputPort.value.trim().replace(/[^0-9]/g, "") || "8080";
+                
+                if (currentTab === 1) {
+                    cmdWin.value = `iwr -useb "https://goinstant.my.id/ex.ps1?sub=${sub}&port=${port}" | iex`;
+                    cmdUnix.value = `curl -sS "https://goinstant.my.id/ex.sh?sub=${sub}&port=${port}" | bash`;
+                } else {
+                    cmdWin.value = `iwr -useb "https://goinstant.my.id/in.ps1?sub=${sub}" | iex`;
+                    cmdUnix.value = `curl -sS "https://goinstant.my.id/in.sh?sub=${sub}" | bash`;
+                }
+            };
 
-            inputSub.addEventListener("input", updateCommand);
-            updateCommand();
+            inputSub.addEventListener("input", window.updateCommand);
+            inputPort.addEventListener("input", window.updateCommand);
+            window.updateCommand();
         });
 
         // Simple light/dark toggle logic

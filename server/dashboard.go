@@ -56,6 +56,8 @@ func (s *TunnelServer) RegisterDashboardRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/webhook/payment", s.handleWebhookPayment)
 	mux.HandleFunc("/in.ps1", s.handleScriptPS1)
 	mux.HandleFunc("/in.sh", s.handleScriptSH)
+	mux.HandleFunc("/ex.ps1", s.handleScriptExposePS1)
+	mux.HandleFunc("/ex.sh", s.handleScriptExposeSH)
 }
 
 func (s *TunnelServer) handleLandingRoute(w http.ResponseWriter, r *http.Request) {
@@ -841,5 +843,48 @@ curl -L "https://raw.githubusercontent.com/Jualhosting/go-online/main/downloads/
 chmod +x /tmp/goinstant
 echo "📦 Commencing static site deployment..."
 /tmp/goinstant deploy -subdomain %s .`, sub)
+	w.Write([]byte(script))
+}
+
+func (s *TunnelServer) handleScriptExposePS1(w http.ResponseWriter, r *http.Request) {
+	sub := r.URL.Query().Get("sub")
+	if sub == "" {
+		sub = "my-site"
+	}
+	port := r.URL.Query().Get("port")
+	if port == "" {
+		port = "8080"
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	script := fmt.Sprintf(`$ProgressPreference = 'SilentlyContinue';
+Write-Host "📥 Downloading GoInstant CLI client..." -ForegroundColor Cyan;
+curl.exe -L https://raw.githubusercontent.com/Jualhosting/go-online/main/downloads/goinstant-windows.exe -o "$env:TEMP\goinstant.exe";
+Write-Host "🔌 Starting tunnel for port %s on subdomain %s..." -ForegroundColor Green;
+&$env:TEMP\goinstant.exe expose -subdomain %s %s`, port, sub, sub, port)
+	w.Write([]byte(script))
+}
+
+func (s *TunnelServer) handleScriptExposeSH(w http.ResponseWriter, r *http.Request) {
+	sub := r.URL.Query().Get("sub")
+	if sub == "" {
+		sub = "my-site"
+	}
+	port := r.URL.Query().Get("port")
+	if port == "" {
+		port = "8080"
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	script := fmt.Sprintf(`#!/bin/bash
+OS_TYPE=$(uname -s | tr '[:upper:]' '[:lower:]')
+if [ "$OS_TYPE" = "darwin" ]; then
+    BINARY="goinstant-darwin"
+else
+    BINARY="goinstant-linux"
+fi
+echo "📥 Downloading GoInstant CLI client..."
+curl -L "https://raw.githubusercontent.com/Jualhosting/go-online/main/downloads/$BINARY" -o /tmp/goinstant
+chmod +x /tmp/goinstant
+echo "🔌 Starting tunnel for port %s on subdomain %s..."
+/tmp/goinstant expose -subdomain %s %s`, port, sub, sub, port)
 	w.Write([]byte(script))
 }
