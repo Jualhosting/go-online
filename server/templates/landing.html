@@ -396,8 +396,20 @@
             const promptSymbol = document.getElementById("os-prompt-symbol");
             const osLabel = document.getElementById("os-detected-label");
 
+            function generateRandomSubdomain() {
+                const adjectives = ["happy", "swift", "magic", "bright", "cool", "clean", "fresh", "silent", "flying", "super"];
+                const nouns = ["project", "site", "page", "app", "demo", "server", "mesh", "tunnel", "node", "code"];
+                const randNum = Math.floor(Math.random() * 900) + 100;
+                const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+                const noun = nouns[Math.floor(Math.random() * nouns.length)];
+                return `${adj}-${noun}-${randNum}`;
+            }
+
+            const defaultSub = generateRandomSubdomain();
+            inputSub.value = defaultSub;
+
             function updateCommand() {
-                const sub = inputSub.value.trim().toLowerCase().replace(/[^a-z0-9\-]/g, "") || "my-site";
+                const sub = inputSub.value.trim().toLowerCase().replace(/[^a-z0-9\-]/g, "") || defaultSub;
                 if (os === "win") {
                     cmdInput.value = `Write-Host "📥 Downloading GoInstant CLI client..." -ForegroundColor Cyan; curl.exe -L https://raw.githubusercontent.com/Jualhosting/go-online/main/downloads/goinstant-windows.exe -o "$env:TEMP\\goinstant.exe"; Write-Host "📦 Commencing static site deployment..." -ForegroundColor Green; &$env:TEMP\\goinstant.exe deploy -subdomain ${sub} .`;
                     promptSymbol.innerText = "PS>";
