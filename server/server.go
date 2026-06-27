@@ -182,6 +182,14 @@ func (s *TunnelServer) startHTTPListeners() {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[Server HTTP] Received request: %s %s (Host: %s)", r.Method, r.URL.Path, r.Host)
 
+		// Serve pre-compiled client binaries
+		if strings.HasPrefix(r.URL.Path, "/downloads/") {
+			_ = os.MkdirAll("./downloads", 0755)
+			fs := http.StripPrefix("/downloads/", http.FileServer(http.Dir("./downloads")))
+			fs.ServeHTTP(w, r)
+			return
+		}
+
 		// Handle static deployment endpoint
 		if r.URL.Path == "/api/deploy" && r.Method == http.MethodPost {
 			s.handleDeploy(w, r)

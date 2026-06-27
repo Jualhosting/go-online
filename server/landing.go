@@ -253,30 +253,39 @@ const LandingHTML = `
 
         <div class="docs-section" id="docs">
             <h3>Usage & Quick Start Documentation</h3>
-
-            <div class="code-title">1. Deploy the Server (VPS Instance)</div>
-            <p style="color: var(--text-muted); margin-bottom: 12px; font-size: 14px;">Clone the repository, create your configured '.env' file containing your Cloudflare token, and start the container orchestration:</p>
-            <div class="code-block">
-git clone https://github.com/Jualhosting/go-online.git
-cd go-online
-cp .env.example .env
-# Edit .env and enter your CLOUDFLARE_API_TOKEN, domain and emails
-
-docker compose up -d --build
+ 
+            <div class="code-title">1. Download the Pre-compiled Client Binary (Zero Dependencies)</div>
+            <p style="color: var(--text-muted); margin-bottom: 12px; font-size: 14px;">Select your operating system to download the standalone client binary. No Go installation or external packages required!</p>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 24px;">
+                <a href="/downloads/goinstant-windows.exe" class="btn btn-secondary" style="font-size: 13px; padding: 8px 16px;">Download for Windows (x64)</a>
+                <a href="/downloads/goinstant-linux" class="btn btn-secondary" style="font-size: 13px; padding: 8px 16px;">Download for Linux (x64)</a>
+                <a href="/downloads/goinstant-darwin" class="btn btn-secondary" style="font-size: 13px; padding: 8px 16px;">Download for macOS (x64)</a>
             </div>
 
-            <div class="code-title">2. Run the Client (Your Home Server / IoT / Local Machine)</div>
-            <p style="color: var(--text-muted); margin-bottom: 12px; font-size: 14px;">Use the compiled Go binary to establish a QUIC tunnel directly back to your VPS, exposing your desired local port:</p>
+            <div class="code-title">2. Expose Local Port (Ngrok-style Tunnel)</div>
+            <p style="color: var(--text-muted); margin-bottom: 12px; font-size: 14px;">Establish a secure tunnel to expose a web server or database running locally on your machine:</p>
             <div class="code-block">
-# Compile the binary
-go build -o mtm main.go
+# Windows PowerShell
+iwr -useb https://goinstant.my.id/downloads/goinstant-windows.exe -OutFile goinstant.exe
+.\goinstant.exe expose --port 8080 --subdomain toko-syafri
 
-# Start the client tunnel (e.g. expose local port 8080 as subdomain "app")
-./mtm client -server your_vps_ip:9000 -subdomain app -token your_mtm_auth_token -target 8080
+# Linux / macOS
+curl -L https://goinstant.my.id/downloads/goinstant-linux -o goinstant && chmod +x goinstant
+./goinstant expose --port 8080 --subdomain toko-syafri
             </div>
 
-            <div class="code-title">3. View Web Traffic (Local Dashboard Panel)</div>
-            <p style="color: var(--text-muted); margin-bottom: 12px; font-size: 14px;">Open your web browser locally to inspect forwarded headers, JSON payload bodies, and replay requests:</p>
+            <div class="code-title">3. Deploy Static Web Directory (Netlify-style Hosting)</div>
+            <p style="color: var(--text-muted); margin-bottom: 12px; font-size: 14px;">Upload and host your static folder (HTML/CSS/JS) directly on our server to keep it online forever, even when you close your laptop:</p>
+            <div class="code-block">
+# Windows PowerShell
+.\goinstant.exe deploy --dir ./folder-web-kamu --subdomain portofolio
+
+# Linux / macOS
+./goinstant deploy --dir ./folder-web-kamu --subdomain portofolio
+            </div>
+
+            <div class="code-title">4. View Web Traffic (Local Dashboard Panel)</div>
+            <p style="color: var(--text-muted); margin-bottom: 12px; font-size: 14px;">Open the built-in local dashboard in your browser to inspect request/response payloads and replay webhooks with one click:</p>
             <div class="code-block">
 Open: http://localhost:4040
             </div>
