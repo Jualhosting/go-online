@@ -867,7 +867,8 @@ func (c *peekConn) Read(b []byte) (int, error) {
 
 func (s *TunnelServer) multiplexConn(conn net.Conn) {
 	br := bufio.NewReader(conn)
-	conn.SetReadDeadline(time.Now().Add(200 * time.Millisecond))
+	// Use 2 seconds read deadline to safely receive ClientHello over WAN latency
+	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
 	peek, err := br.Peek(1)
 	conn.SetReadDeadline(time.Time{})
 
@@ -888,6 +889,7 @@ func (s *TunnelServer) multiplexConn(conn net.Conn) {
 			wrapped.Close()
 		}
 	} else {
+		log.Printf("[Mux] Routing connection from %s to SSH (peek err: %v, peek bytes: %x)", conn.RemoteAddr(), err, peek)
 		select {
 		case s.sshListener.ch <- wrapped:
 		default:
