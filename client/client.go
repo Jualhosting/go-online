@@ -17,6 +17,7 @@ import (
 	"go-online/common"
 
 	"github.com/quic-go/quic-go"
+	"golang.org/x/net/websocket"
 )
 
 type TunnelClient struct {
@@ -47,27 +48,113 @@ func (c *TunnelClient) Start() {
 		log.Printf("[Client] Connecting to tunnel server at %s...", c.ServerAddr)
 		conn, err := quic.DialAddr(context.Background(), c.ServerAddr, tlsConf, &quic.Config{
 			KeepAlivePeriod: 5 * time.Second,
+			MaxIdleTimeout:  30 * time.Second,
 		})
 		if err != nil {
-			log.Printf("[Client] Connection failed: %v. Retrying in 5 seconds...", err)
+			log.Printf("[Client] QUIC connection failed: %v. Falling back to WebSocket (TCP)...", err)
+			c.startWebSocketTunnel()
 			time.Sleep(5 * time.Second)
 			continue
 		}
 
-		log.Println("[Client] Connected to server! Performing handshake...")
+		log.Println("[Client] Connected to server via QUIC! Performing handshake...")
 		if err := c.runHandshake(conn); err != nil {
-			log.Printf("[Client] Handshake failed: %v. Reconnecting in 5 seconds...", err)
+			log.Printf("[Client] QUIC handshake failed: %v. Falling back to WebSocket (TCP)...", err)
 			conn.CloseWithError(1, "handshake failed")
+			c.startWebSocketTunnel()
 			time.Sleep(5 * time.Second)
 			continue
 		}
 
-		log.Println("[Client] Handshake successful! Tunnel is open and ready.")
+		log.Println("[Client] QUIC handshake successful! Tunnel is open and ready.")
 		
 		// Accept streams representing incoming visitor connections
 		c.acceptStreams(conn)
-		log.Println("[Client] Connection closed. Reconnecting in 5 seconds...")
+		log.Println("[Client] QUIC connection closed. Falling back to WebSocket...")
+		c.startWebSocketTunnel()
 		time.Sleep(5 * time.Second)
+	}
+}
+
+func (c *TunnelClient) startWebSocketTunnel() {
+	host, port, err := net.SplitHostPort(c.ServerAddr)
+	if err != nil {
+		host = c.ServerAddr
+		port = "443"
+	}
+
+	scheme := "wss"
+	if host == "localhost" || host == "127.0.0.1" {
+		scheme = "ws"
+	}
+
+	url := fmt.Sprintf("%s://%s:%s/api/tunnel/ws/control?subdomain=%s&token=%s", scheme, host, port, c.Subdomain, c.AuthToken)
+	log.Printf("[Client WS] Connecting to WebSocket tunnel control at %s...", url)
+
+	config, err := websocket.NewConfig(url, "http://"+host)
+	if err != nil {
+		log.Printf("[Client WS] Failed to create config: %v", err)
+		return
+	}
+	config.TlsConfig = &tls.Config{
+		InsecureSkipVerify: true,
+	}
+
+	ws, err := websocket.DialConfig(config)
+	if err != nil {
+		log.Printf("[Client WS] Connection failed: %v. Retrying in next cycle...", err)
+		return
+	}
+	defer ws.Close()
+
+	log.Println("[Client WS] Connected successfully! Waiting for control messages...")
+
+	type WSControlMessage struct {
+		Action   string `json:"action"`
+		StreamID string `json:"stream_id"`
+		Protocol string `json:"protocol"`
+		Host     string `json:"host"`
+	}
+
+	for {
+		var msg WSControlMessage
+		err := websocket.JSON.Receive(ws, &msg)
+		if err != nil {
+			log.Printf("[Client WS] Control stream disconnected: %v", err)
+			break
+		}
+
+		if msg.Action == "open_stream" {
+			go c.handleWSStream(msg.StreamID, msg.Protocol, host, port, scheme)
+		}
+	}
+}
+
+func (c *TunnelClient) handleWSStream(streamID, protocol, host, port, scheme string) {
+	logPrefix := fmt.Sprintf("WS-%s", streamID)
+	log.Printf("[%s] Opening stream data connection...", logPrefix)
+
+	dataURL := fmt.Sprintf("%s://%s:%s/api/tunnel/ws/data?stream_id=%s", scheme, host, port, streamID)
+	config, err := websocket.NewConfig(dataURL, "http://"+host)
+	if err != nil {
+		log.Printf("[%s] Config error: %v", logPrefix, err)
+		return
+	}
+	config.TlsConfig = &tls.Config{
+		InsecureSkipVerify: true,
+	}
+
+	dataConn, err := websocket.DialConfig(config)
+	if err != nil {
+		log.Printf("[%s] Connection error: %v", logPrefix, err)
+		return
+	}
+	defer dataConn.Close()
+
+	if protocol == "http" {
+		c.handleHTTPStream(dataConn, logPrefix)
+	} else {
+		c.handleTCPStream(dataConn, logPrefix)
 	}
 }
 
@@ -133,25 +220,26 @@ func (c *TunnelClient) handleStream(stream *quic.Stream) {
 	}
 	log.Printf("[Client Stream %d] Read stream header successfully: %+v", stream.StreamID(), header)
 
+	logPrefix := fmt.Sprintf("Stream %d", stream.StreamID())
 	if header.Protocol == "http" {
-		c.handleHTTPStream(stream)
+		c.handleHTTPStream(stream, logPrefix)
 	} else {
 		// Generic TCP tunneling
-		c.handleTCPStream(stream)
+		c.handleTCPStream(stream, logPrefix)
 	}
 }
 
-func (c *TunnelClient) handleHTTPStream(stream *quic.Stream) {
-	log.Printf("[Client Stream %d] Reading HTTP request...", stream.StreamID())
+func (c *TunnelClient) handleHTTPStream(stream io.ReadWriteCloser, logPrefix string) {
+	log.Printf("[%s] Reading HTTP request...", logPrefix)
 	reader := bufio.NewReader(stream)
 
 	// Read the HTTP request from the stream
 	req, err := http.ReadRequest(reader)
 	if err != nil {
-		log.Printf("[Client Stream %d] Error reading HTTP request: %v", stream.StreamID(), err)
+		log.Printf("[%s] Error reading HTTP request: %v", logPrefix, err)
 		return
 	}
-	log.Printf("[Client Stream %d] HTTP request read successfully: %s %s", stream.StreamID(), req.Method, req.URL)
+	log.Printf("[%s] HTTP request read successfully: %s %s", logPrefix, req.Method, req.URL)
 
 	// Capture request details for the inspector
 	reqID := fmt.Sprintf("req-%d", time.Now().UnixNano())
@@ -220,7 +308,11 @@ func (c *TunnelClient) handleHTTPStream(stream *quic.Stream) {
 		}()
 		go func() {
 			_, err := io.Copy(stream, localConn)
-			stream.CancelRead(0)
+			if qs, ok := stream.(interface{ CancelRead(quic.StreamErrorCode) }); ok {
+				qs.CancelRead(0)
+			} else {
+				stream.Close()
+			}
 			errChan <- err
 		}()
 		<-errChan
@@ -279,7 +371,7 @@ func (c *TunnelClient) handleHTTPStream(stream *quic.Stream) {
 	}
 }
 
-func (c *TunnelClient) handleTCPStream(stream *quic.Stream) {
+func (c *TunnelClient) handleTCPStream(stream io.ReadWriteCloser, logPrefix string) {
 	localConn, err := net.Dial("tcp", c.TargetAddr)
 	if err != nil {
 		log.Printf("[Client] Failed to dial local service %s: %v", c.TargetAddr, err)

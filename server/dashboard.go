@@ -17,9 +17,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
-	"go-online/common"
+	"golang.org/x/net/websocket"
 )
 
 //go:embed templates/*
@@ -58,6 +59,11 @@ func (s *TunnelServer) RegisterDashboardRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/in.sh", s.handleScriptSH)
 	mux.HandleFunc("/ex.ps1", s.handleScriptExposePS1)
 	mux.HandleFunc("/ex.sh", s.handleScriptExposeSH)
+
+	// WebSocket & SSH tunnel routing
+	mux.Handle("/api/tunnel/ws/control", websocket.Handler(s.handleWSControl))
+	mux.Handle("/api/tunnel/ws/data", websocket.Handler(s.handleWSData))
+	mux.HandleFunc("/qr/", s.handleQRRedirect)
 }
 
 func (s *TunnelServer) handleLandingRoute(w http.ResponseWriter, r *http.Request) {
@@ -394,24 +400,17 @@ func (s *TunnelServer) handleAPIWebhooksReplay(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// Replay request payload over QUIC
+	// Replay request payload over Tunnel
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		stream, err := session.Connection.OpenStreamSync(ctx)
+		conn, err := session.Tunnel.OpenStream(ctx, "http", subdomain+"."+s.Domain)
 		if err != nil {
 			log.Printf("[Webhook Replay] Failed to open stream: %v", err)
 			return
 		}
-		defer stream.Close()
-
-		// Write protocol header
-		header := common.StreamHeader{
-			Protocol: "http",
-			Host:     subdomain + "." + s.Domain,
-		}
-		_ = common.WriteJSON(stream, header)
+		defer conn.Close()
 
 		// Create mock HTTP request
 		mockReq, err := http.NewRequest(method, uri, strings.NewReader(bodyStr))
@@ -429,8 +428,8 @@ func (s *TunnelServer) handleAPIWebhooksReplay(w http.ResponseWriter, r *http.Re
 			}
 		}
 
-		// Write the request to stream
-		_ = mockReq.Write(stream)
+		// Write the request to conn
+		_ = mockReq.Write(conn)
 	}()
 
 	userID := s.getUserFromSession(r)
@@ -568,19 +567,7 @@ func (s *TunnelServer) handleClientTraffic(w http.ResponseWriter, r *http.Reques
 			},
 			Transport: &http.Transport{
 				DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-					stream, err := session.Connection.OpenStreamSync(ctx)
-					if err != nil {
-						return nil, err
-					}
-					header := common.StreamHeader{
-						Protocol: "http",
-						Host:     r.Host,
-					}
-					if err := common.WriteJSON(stream, header); err != nil {
-						stream.Close()
-						return nil, err
-					}
-					return &quicConnWrap{Stream: stream, conn: session.Connection}, nil
+					return session.Tunnel.OpenStream(ctx, "http", r.Host)
 				},
 			},
 		}
@@ -887,4 +874,227 @@ chmod +x /tmp/goinstant
 echo "🔌 Starting tunnel for port %s on subdomain %s..."
 /tmp/goinstant expose -subdomain %s %s`, port, sub, sub, port)
 	w.Write([]byte(script))
+}
+
+type WSControlMessage struct {
+	Action   string `json:"action"`
+	StreamID string `json:"stream_id"`
+	Protocol string `json:"protocol"`
+	Host     string `json:"host"`
+}
+
+type WsTunnel struct {
+	Subdomain string
+	WriteMu   sync.Mutex
+	Conn      *websocket.Conn
+	Streams   sync.Map
+}
+
+func (w *WsTunnel) OpenStream(ctx context.Context, protocol, host string) (net.Conn, error) {
+	streamID := fmt.Sprintf("str_%d", time.Now().UnixNano())
+	ch := make(chan net.Conn, 1)
+	w.Streams.Store(streamID, ch)
+	defer w.Streams.Delete(streamID)
+
+	msg := WSControlMessage{
+		Action:   "open_stream",
+		StreamID: streamID,
+		Protocol: protocol,
+		Host:     host,
+	}
+
+	w.WriteMu.Lock()
+	err := websocket.JSON.Send(w.Conn, msg)
+	w.WriteMu.Unlock()
+	if err != nil {
+		return nil, err
+	}
+
+	select {
+	case conn := <-ch:
+		return conn, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-time.After(5 * time.Second):
+		return nil, fmt.Errorf("timeout waiting for data connection on stream %s", streamID)
+	}
+}
+
+func (w *WsTunnel) Close() error {
+	return w.Conn.Close()
+}
+
+type wsConnWrap struct {
+	*websocket.Conn
+	done chan struct{}
+	once sync.Once
+}
+
+func (w *wsConnWrap) Close() error {
+	var err error
+	w.once.Do(func() {
+		err = w.Conn.Close()
+		close(w.done)
+	})
+	return err
+}
+
+func (s *TunnelServer) handleWSControl(ws *websocket.Conn) {
+	r := ws.Request()
+	subdomain := r.URL.Query().Get("subdomain")
+	token := r.URL.Query().Get("token")
+
+	log.Printf("[Server WS] Incoming control connection request for subdomain %s", subdomain)
+
+	var userID string
+	var assignedToken string
+	if s.db != nil {
+		var err error
+		userID, err = s.db.ValidateUserToken(token)
+		if err != nil {
+			if token == s.AuthToken {
+				userID = "user_syafri"
+			} else {
+				assignedToken = "tok_" + fmt.Sprintf("%d", time.Now().UnixNano())
+				anonUserID := "usr_" + fmt.Sprintf("%d", time.Now().UnixNano())
+				_, errUser := s.db.db.Exec("INSERT INTO users (id, email, plan_type, token, is_anonymous) VALUES (?, ?, ?, ?, 1)", anonUserID, anonUserID+"@anonymous.goinstant.my.id", "free", assignedToken)
+				if errUser == nil {
+					userID = anonUserID
+					token = assignedToken
+				} else {
+					log.Printf("[Server WS] Failed to create anonymous user: %v", errUser)
+					ws.Close()
+					return
+				}
+			}
+		}
+	} else {
+		if token != s.AuthToken {
+			log.Printf("[Server WS] Unauthorized control handshake from %s", ws.RemoteAddr())
+			ws.Close()
+			return
+		}
+		userID = "user_syafri"
+	}
+
+	subdomain = strings.ToLower(strings.TrimSpace(subdomain))
+	if subdomain == "" {
+		ws.Close()
+		return
+	}
+
+	_, found := s.routeCache.Load(subdomain)
+	if !found {
+		if s.db != nil {
+			id, err := s.db.RegisterSubdomain(userID, subdomain, "tunnel", "")
+			if err != nil {
+				ws.Close()
+				return
+			}
+			info := RouteInfo{
+				SubdomainID: id,
+				Subdomain:   subdomain,
+				RoutingType: "tunnel",
+				IsActive:    true,
+			}
+			s.routeCache.Store(subdomain, info)
+		}
+	} else {
+		if s.db != nil {
+			var ownerID string
+			err := s.db.db.QueryRow("SELECT user_id FROM subdomains WHERE subdomain = ?", subdomain).Scan(&ownerID)
+			if err == nil && ownerID != userID {
+				log.Printf("[Server WS] Subdomain %s is owned by another user (%s)", subdomain, ownerID)
+				ws.Close()
+				return
+			}
+		}
+	}
+
+	wsTunnel := &WsTunnel{
+		Subdomain: subdomain,
+		Conn:      ws,
+	}
+
+	session := &ClientSession{
+		Tunnel:    wsTunnel,
+		Subdomain: subdomain,
+		Token:     token,
+		Type:      "websocket",
+	}
+
+	s.clientsMu.Lock()
+	if oldSession, exists := s.clients[subdomain]; exists {
+		log.Printf("[Server WS] Subdomain %s already registered. Disconnecting old session.", subdomain)
+		oldSession.Tunnel.Close()
+	}
+	s.clients[subdomain] = session
+	s.clientsMu.Unlock()
+
+	log.Printf("[Server WS] Client authenticated! Registered subdomain: %s.%s (User: %s)", subdomain, s.Domain, userID)
+
+	if s.db != nil {
+		_ = s.db.LogAuditEvent(userID, "expose.ws", fmt.Sprintf("Opened WebSocket control tunnel for subdomain %s", subdomain))
+	}
+
+	buf := make([]byte, 1024)
+	for {
+		_, err := ws.Read(buf)
+		if err != nil {
+			break
+		}
+	}
+
+	log.Printf("[Server WS] Control connection disconnected for subdomain %s", subdomain)
+	s.removeClient(subdomain)
+}
+
+func (s *TunnelServer) handleWSData(ws *websocket.Conn) {
+	r := ws.Request()
+	streamID := r.URL.Query().Get("stream_id")
+
+	log.Printf("[Server WS] Incoming data connection request for stream ID %s", streamID)
+
+	s.clientsMu.RLock()
+	var matchedTunnel *WsTunnel
+	for _, c := range s.clients {
+		if c.Type == "websocket" {
+			if t, ok := c.Tunnel.(*WsTunnel); ok {
+				if _, ok := t.Streams.Load(streamID); ok {
+					matchedTunnel = t
+					break
+				}
+			}
+		}
+	}
+	s.clientsMu.RUnlock()
+
+	if matchedTunnel == nil {
+		log.Printf("[Server WS] No pending stream matched for ID %s", streamID)
+		ws.Close()
+		return
+	}
+
+	if val, ok := matchedTunnel.Streams.Load(streamID); ok {
+		if ch, ok := val.(chan net.Conn); ok {
+			done := make(chan struct{})
+			connWrap := &wsConnWrap{
+				Conn: ws,
+				done: done,
+			}
+			ch <- connWrap
+			<-done
+		}
+	}
+}
+
+func (s *TunnelServer) handleQRRedirect(w http.ResponseWriter, r *http.Request) {
+	subdomain := strings.TrimPrefix(r.URL.Path, "/qr/")
+	if subdomain == "" {
+		http.Error(w, "Missing subdomain", http.StatusBadRequest)
+		return
+	}
+
+	qrURL := fmt.Sprintf("https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://%s.%s", subdomain, s.Domain)
+	http.Redirect(w, r, qrURL, http.StatusFound)
 }

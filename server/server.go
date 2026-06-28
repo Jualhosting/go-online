@@ -2,8 +2,10 @@ package server
 
 import (
 	"archive/zip"
+	"bufio"
 	"bytes"
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"log"
@@ -22,11 +24,43 @@ import (
 	"github.com/quic-go/quic-go"
 )
 
+// ClientTunnel represents a unified stream/tunnel driver.
+type ClientTunnel interface {
+	OpenStream(ctx context.Context, protocol, host string) (net.Conn, error)
+	Close() error
+}
+
+type QuicTunnel struct {
+	Connection *quic.Conn
+}
+
+func (t *QuicTunnel) OpenStream(ctx context.Context, protocol, host string) (net.Conn, error) {
+	stream, err := t.Connection.OpenStreamSync(ctx)
+	if err != nil {
+		return nil, err
+	}
+	header := common.StreamHeader{
+		Protocol: protocol,
+		Host:     host,
+	}
+	if err := common.WriteJSON(stream, header); err != nil {
+		stream.Close()
+		return nil, err
+	}
+	return &quicConnWrap{Stream: stream, conn: t.Connection}, nil
+}
+
+func (t *QuicTunnel) Close() error {
+	t.Connection.CloseWithError(0, "closed")
+	return nil
+}
+
 // ClientSession represents an active client tunnel connection.
 type ClientSession struct {
-	Connection *quic.Conn
-	Subdomain  string
-	Token      string
+	Tunnel    ClientTunnel
+	Subdomain string
+	Token     string
+	Type      string // "quic", "websocket", "ssh"
 }
 
 type RouteInfo struct {
@@ -35,6 +69,38 @@ type RouteInfo struct {
 	Subdomain   string
 	RoutingType string
 	IsActive    bool
+}
+
+type chanListener struct {
+	addr net.Addr
+	ch   chan net.Conn
+	done chan struct{}
+}
+
+func newChanListener(addr net.Addr) *chanListener {
+	return &chanListener{
+		addr: addr,
+		ch:   make(chan net.Conn, 100),
+		done: make(chan struct{}),
+	}
+}
+
+func (l *chanListener) Accept() (net.Conn, error) {
+	select {
+	case conn := <-l.ch:
+		return conn, nil
+	case <-l.done:
+		return nil, io.EOF
+	}
+}
+
+func (l *chanListener) Close() error {
+	close(l.done)
+	return nil
+}
+
+func (l *chanListener) Addr() net.Addr {
+	return l.addr
 }
 
 type TunnelServer struct {
@@ -58,6 +124,11 @@ type TunnelServer struct {
 	db         *DBManager
 	routeCache sync.Map
 	r2         *R2Manager
+
+	// Multiplexing & SSH listeners
+	httpsListener    *chanListener
+	sshListener      *chanListener
+	debuggerListener *chanListener
 }
 
 func NewTunnelServer(addr, domain, authToken, email, httpPort, httpsPort string) *TunnelServer {
@@ -113,6 +184,7 @@ func (s *TunnelServer) Start() error {
 	// 2. Start QUIC Listener
 	listener, err := quic.ListenAddr(s.Addr, quicTLSConfig, &quic.Config{
 		KeepAlivePeriod: 5 * time.Second,
+		MaxIdleTimeout:  30 * time.Second,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to listen on QUIC: %w", err)
@@ -268,13 +340,14 @@ func (s *TunnelServer) handleClientConnection(conn *quic.Conn) {
 	s.clientsMu.Lock()
 	if oldSession, exists := s.clients[subdomain]; exists {
 		log.Printf("[Server] Subdomain %s already registered. Disconnecting old session.", subdomain)
-		oldSession.Connection.CloseWithError(3, "replaced by new session")
+		oldSession.Tunnel.Close()
 	}
 
 	session := &ClientSession{
-		Connection: conn,
-		Subdomain:  subdomain,
-		Token:      req.Token,
+		Tunnel:    &QuicTunnel{Connection: conn},
+		Subdomain: subdomain,
+		Token:     req.Token,
+		Type:      "quic",
 	}
 	s.clients[subdomain] = session
 	s.clientsMu.Unlock()
@@ -382,16 +455,47 @@ func (s *TunnelServer) startHTTPListeners() {
 		}
 	}()
 
-	// Start Port 443 (HTTPS) server
+	// Start Port 443 (HTTPS) server with TCP multiplexing
 	addr := ":" + s.HTTPSPort
-	log.Printf("[Server] Traffic listener on port HTTPS %s", addr)
+	log.Printf("[Server] Traffic listener on port HTTPS %s (Multiplexed)", addr)
+
+	rawLis, err := net.Listen("tcp", addr)
+	if err != nil {
+		log.Fatalf("[Server] Failed to listen on TCP %s: %v", addr, err)
+	}
+
+	// Initialize multiplexed listeners
+	s.httpsListener = newChanListener(rawLis.Addr())
+	s.sshListener = newChanListener(rawLis.Addr())
+	s.debuggerListener = newChanListener(rawLis.Addr())
+
+	// Start SSH Server
+	go s.StartSSHServer(s.sshListener)
+
+	// Start Web Debugger Server
+	dbgr := NewDebuggerServer(s, s.debuggerListener)
+	go dbgr.Start()
+
+	// Start HTTPS server
 	server := &http.Server{
-		Addr:      addr,
 		Handler:   handler,
 		TLSConfig: tlsConfig,
 	}
-	if err := server.ListenAndServeTLS("", ""); err != nil {
-		log.Fatalf("[Server] HTTPS listener error: %v", err)
+	tlsListener := tls.NewListener(s.httpsListener, tlsConfig)
+	go func() {
+		if err := server.Serve(tlsListener); err != nil && err != http.ErrServerClosed {
+			log.Printf("[Server] HTTPS listener error: %v", err)
+		}
+	}()
+
+	// Multiplex incoming TCP connections
+	for {
+		conn, err := rawLis.Accept()
+		if err != nil {
+			log.Printf("[Server] Raw accept error: %v", err)
+			break
+		}
+		go s.multiplexConn(conn)
 	}
 }
 
@@ -750,4 +854,44 @@ func (s *TunnelServer) getDeployDir() string {
 		return s.DeployDir
 	}
 	return "./deployed"
+}
+
+type peekConn struct {
+	net.Conn
+	r io.Reader
+}
+
+func (c *peekConn) Read(b []byte) (int, error) {
+	return c.r.Read(b)
+}
+
+func (s *TunnelServer) multiplexConn(conn net.Conn) {
+	br := bufio.NewReader(conn)
+	conn.SetReadDeadline(time.Now().Add(200 * time.Millisecond))
+	peek, err := br.Peek(1)
+	conn.SetReadDeadline(time.Time{})
+
+	isTLS := false
+	if err == nil && len(peek) > 0 && peek[0] == 0x16 {
+		isTLS = true
+	}
+
+	wrapped := &peekConn{
+		Conn: conn,
+		r:    br,
+	}
+
+	if isTLS {
+		select {
+		case s.httpsListener.ch <- wrapped:
+		default:
+			wrapped.Close()
+		}
+	} else {
+		select {
+		case s.sshListener.ch <- wrapped:
+		default:
+			wrapped.Close()
+		}
+	}
 }

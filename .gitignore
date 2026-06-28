@@ -27,3 +27,8 @@ data/
 # OS Files
 Thumbs.db
 Desktop.ini
+
+# Database & Key Files
+*.db
+*.db-journal
+ssh_host_key

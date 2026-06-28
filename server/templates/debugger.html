@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GoInstant Web Debugger</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0b0f19;
+            --bg-secondary: #111827;
+            --bg-tertiary: #1f2937;
+            --border-color: #374151;
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --accent-color: #3b82f6;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header {
+            background-color: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+
+        header h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        header h1 span {
+            color: var(--accent-color);
+        }
+
+        .subdomain-badge {
+            background-color: rgba(59, 130, 246, 0.15);
+            color: var(--accent-color);
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 35%;
+            background-color: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .search-container {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .search-input {
+            flex: 1;
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem;
+            outline: none;
+            font-size: 0.9rem;
+        }
+
+        .search-input:focus {
+            border-color: var(--accent-color);
+        }
+
+        .clear-btn {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+        }
+
+        .clear-btn:hover {
+            color: var(--text-primary);
+            background-color: var(--bg-tertiary);
+        }
+
+        .request-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .request-item {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            transition: background-color 0.2s;
+        }
+
+        .request-item:hover {
+            background-color: var(--bg-tertiary);
+        }
+
+        .request-item.active {
+            background-color: rgba(59, 130, 246, 0.1);
+            border-left: 3px solid var(--accent-color);
+        }
+
+        .req-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .req-method-path {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 500;
+        }
+
+        .method-badge {
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 0.15rem 0.4rem;
+            border-radius: 0.25rem;
+            text-transform: uppercase;
+        }
+
+        .method-badge.get { background-color: rgba(16, 185, 129, 0.15); color: var(--success-color); }
+        .method-badge.post { background-color: rgba(59, 130, 246, 0.15); color: var(--accent-color); }
+        .method-badge.put { background-color: rgba(245, 158, 11, 0.15); color: var(--warning-color); }
+        .method-badge.delete { background-color: rgba(239, 68, 68, 0.15); color: var(--error-color); }
+
+        .req-path {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            word-break: break-all;
+        }
+
+        .req-time {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .details-panel {
+            flex: 1;
+            background-color: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding: 1.5rem;
+        }
+
+        .placeholder-text {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            color: var(--text-secondary);
+            gap: 1rem;
+        }
+
+        .placeholder-text svg {
+            width: 48px;
+            height: 48px;
+            stroke: var(--text-secondary);
+        }
+
+        .details-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .details-title-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .details-title-row h2 {
+            font-size: 1.15rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .replay-btn {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            transition: background-color 0.2s;
+        }
+
+        .replay-btn:hover {
+            background-color: #2563eb;
+        }
+
+        .details-body {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .section-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.05em;
+        }
+
+        .headers-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.5rem 1.5rem;
+            background-color: var(--bg-secondary);
+            padding: 1rem;
+            border-radius: 0.375rem;
+            border: 1px solid var(--border-color);
+            font-size: 0.85rem;
+        }
+
+        .header-name {
+            font-weight: 600;
+            color: var(--accent-color);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .header-value {
+            font-family: 'JetBrains Mono', monospace;
+            word-break: break-all;
+        }
+
+        pre {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            padding: 1rem;
+            border-radius: 0.375rem;
+            overflow-x: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>GoInstant <span>Web Debugger</span></h1>
+        <div class="subdomain-badge" id="subdomain-badge">Loading...</div>
+    </header>
+
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="search-container">
+                <input type="text" class="search-input" id="search-input" placeholder="Filter path or body...">
+                <button class="clear-btn" id="clear-btn">Clear</button>
+            </div>
+            <div class="request-list" id="request-list">
+                <!-- Request items go here -->
+            </div>
+        </div>
+
+        <div class="details-panel" id="details-panel">
+            <div class="placeholder-text" id="details-placeholder">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p>Select a request from the sidebar to inspect details</p>
+            </div>
+
+            <div id="details-content" style="display: none;">
+                <div class="details-header">
+                    <div class="details-title-row">
+                        <span class="method-badge" id="details-method">GET</span>
+                        <h2 id="details-path">/</h2>
+                    </div>
+                    <button class="replay-btn" id="replay-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:16px;height:16px;">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                        </svg>
+                        Replay
+                    </button>
+                </div>
+
+                <div class="details-body">
+                    <div>
+                        <div class="section-title">Query & Metadata</div>
+                        <div class="headers-grid" id="details-meta-grid">
+                            <!-- Metadata details -->
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="section-title">Headers</div>
+                        <div class="headers-grid" id="details-headers-grid">
+                            <!-- Headers go here -->
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="section-title">Body</div>
+                        <pre id="details-body-text">Empty body</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const requestListEl = document.getElementById('request-list');
+        const detailsPlaceholderEl = document.getElementById('details-placeholder');
+        const detailsContentEl = document.getElementById('details-content');
+        const detailsMethodEl = document.getElementById('details-method');
+        const detailsPathEl = document.getElementById('details-path');
+        const detailsHeadersGridEl = document.getElementById('details-headers-grid');
+        const detailsMetaGridEl = document.getElementById('details-meta-grid');
+        const detailsBodyTextEl = document.getElementById('details-body-text');
+        const replayBtn = document.getElementById('replay-btn');
+        const searchInput = document.getElementById('search-input');
+        const clearBtn = document.getElementById('clear-btn');
+        const subdomainBadge = document.getElementById('subdomain-badge');
+
+        let requests = [];
+        let selectedRequestID = null;
+
+        function loadSubdomain() {
+            // Get subdomain from API or url
+            fetch('/api/logs')
+                .then(r => r.headers.get('X-Subdomain') || 'localhost')
+                .then(sub => {
+                    subdomainBadge.textContent = sub + '.goinstant.my.id';
+                })
+                .catch(() => {
+                    subdomainBadge.textContent = 'Active Tunnel';
+                });
+        }
+
+        function fetchLogs() {
+            const query = searchInput.value;
+            fetch('/api/logs')
+                .then(r => r.json())
+                .then(data => {
+                    requests = data;
+                    renderList(query);
+                });
+        }
+
+        function renderList(filter = '') {
+            requestListEl.innerHTML = '';
+            const filtered = requests.filter(r => {
+                if (!filter) return true;
+                return r.url.toLowerCase().includes(filter.toLowerCase()) || 
+                       r.body.toLowerCase().includes(filter.toLowerCase());
+            });
+
+            filtered.forEach(req => {
+                const el = document.createElement('div');
+                el.className = `request-item ${selectedRequestID === req.id ? 'active' : ''}`;
+                el.onclick = () => selectRequest(req);
+
+                const time = new Date(req.received_at).toLocaleTimeString();
+
+                el.innerHTML = `
+                    <div class="req-meta">
+                        <div class="req-method-path">
+                            <span class="method-badge ${req.method.toLowerCase()}">${req.method}</span>
+                            <span class="req-path">${req.url}</span>
+                        </div>
+                        <span class="req-time">${time}</span>
+                    </div>
+                `;
+                requestListEl.appendChild(el);
+            });
+        }
+
+        function selectRequest(req) {
+            selectedRequestID = req.id;
+            
+            // Update active list selection
+            document.querySelectorAll('.request-item').forEach(el => el.classList.remove('active'));
+            renderList(searchInput.value);
+
+            detailsPlaceholderEl.style.display = 'none';
+            detailsContentEl.style.display = 'flex';
+
+            detailsMethodEl.textContent = req.method;
+            detailsMethodEl.className = `method-badge ${req.method.toLowerCase()}`;
+            detailsPathEl.textContent = req.url;
+
+            // Render metadata
+            detailsMetaGridEl.innerHTML = `
+                <div class="header-name">Received At</div><div class="header-value">${req.received_at}</div>
+                <div class="header-name">Request ID</div><div class="header-value">${req.id}</div>
+            `;
+
+            // Render headers
+            detailsHeadersGridEl.innerHTML = '';
+            try {
+                const headers = JSON.parse(req.headers);
+                for (const [key, value] of Object.entries(headers)) {
+                    const nameEl = document.createElement('div');
+                    nameEl.className = 'header-name';
+                    nameEl.textContent = key;
+                    const valEl = document.createElement('div');
+                    valEl.className = 'header-value';
+                    valEl.textContent = Array.isArray(value) ? value.join(', ') : value;
+                    detailsHeadersGridEl.appendChild(nameEl);
+                    detailsHeadersGridEl.appendChild(valEl);
+                }
+            } catch (e) {
+                detailsHeadersGridEl.innerHTML = '<div class="header-value">Failed to parse headers</div>';
+            }
+
+            // Render body
+            detailsBodyTextEl.textContent = req.body || 'Empty body';
+        }
+
+        replayBtn.onclick = () => {
+            if (!selectedRequestID) return;
+            replayBtn.disabled = true;
+            replayBtn.textContent = 'Replaying...';
+            fetch(`/api/replay?id=${selectedRequestID}`, { method: 'POST' })
+                .then(r => r.json())
+                .then(() => {
+                    alert('Request replayed successfully!');
+                    fetchLogs();
+                })
+                .catch(err => {
+                    alert('Replay failed: ' + err.message);
+                })
+                .finally(() => {
+                    replayBtn.disabled = false;
+                    replayBtn.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:16px;height:16px;">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                        </svg>
+                        Replay
+                    `;
+                });
+        };
+
+        searchInput.oninput = () => {
+            renderList(searchInput.value);
+        };
+
+        clearBtn.onclick = () => {
+            searchInput.value = '';
+            renderList();
+        };
+
+        // SSE connection for real-time live update
+        function connectSSE() {
+            const eventSource = new EventSource('/api/logs/sse');
+            eventSource.onmessage = (event) => {
+                const updated = JSON.parse(event.data);
+                if (updated && updated.length > 0) {
+                    requests = updated;
+                    renderList(searchInput.value);
+                }
+            };
+            eventSource.onerror = () => {
+                eventSource.close();
+                // Reconnect after 3 seconds
+                setTimeout(connectSSE, 3000);
+            };
+        }
+
+        loadSubdomain();
+        fetchLogs();
+        connectSSE();
+    </script>
+</body>
+</html>
