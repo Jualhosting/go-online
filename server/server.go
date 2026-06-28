@@ -394,6 +394,7 @@ func (s *TunnelServer) startHTTPListeners() {
 	if err != nil {
 		log.Fatalf("[Server] Failed to get TLS config: %v", err)
 	}
+	tlsConfig.NextProtos = []string{"h2", "http/1.1", "acme-tls/1"}
 
 	mux := http.NewServeMux()
 	s.RegisterDashboardRoutes(mux)
