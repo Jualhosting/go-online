@@ -20,6 +20,7 @@ import (
 type SshTunnel struct {
 	Connection ssh.Conn
 	RemotePort uint32
+	RemoteAddr string
 }
 
 func (t *SshTunnel) OpenStream(ctx context.Context, protocol, host string) (net.Conn, error) {
@@ -31,7 +32,7 @@ func (t *SshTunnel) OpenStream(ctx context.Context, protocol, host string) (net.
 	}
 
 	channel, requests, err := t.Connection.OpenChannel("forwarded-tcpip", ssh.Marshal(forwardedTcpipPayload{
-		Addr:       "127.0.0.1",
+		Addr:       t.RemoteAddr,
 		Port:       t.RemotePort,
 		OriginAddr: "127.0.0.1",
 		OriginPort: 0,
@@ -220,6 +221,7 @@ func (s *TunnelServer) handleSSHConnection(conn net.Conn, config *ssh.ServerConf
 	}
 
 	var forwardPort uint32
+	var forwardAddr string
 	var hasForward bool
 
 	go func() {
@@ -236,6 +238,7 @@ func (s *TunnelServer) handleSSHConnection(conn net.Conn, config *ssh.ServerConf
 				}
 
 				forwardPort = payload.BindPort
+				forwardAddr = payload.BindAddr
 				hasForward = true
 
 				var respPayload struct {
@@ -248,7 +251,7 @@ func (s *TunnelServer) handleSSHConnection(conn net.Conn, config *ssh.ServerConf
 				}
 
 				req.Reply(true, ssh.Marshal(respPayload))
-				log.Printf("[SSH] Forward registered for subdomain %s on port %d", subdomain, forwardPort)
+				log.Printf("[SSH] Forward registered for subdomain %s on port %d (bind: %s)", subdomain, forwardPort, forwardAddr)
 			default:
 				req.Reply(false, nil)
 			}
@@ -266,6 +269,7 @@ func (s *TunnelServer) handleSSHConnection(conn net.Conn, config *ssh.ServerConf
 	sshTunnel := &SshTunnel{
 		Connection: sshConn,
 		RemotePort: forwardPort,
+		RemoteAddr: forwardAddr,
 	}
 
 	session := &ClientSession{
@@ -300,7 +304,7 @@ func (s *TunnelServer) handleSSHConnection(conn net.Conn, config *ssh.ServerConf
 			if err != nil {
 				continue
 			}
-			go s.handleSSHSession(channel, requests, subdomain, rawToken, assignedToken)
+			go s.handleSSHSession(channel, requests, subdomain, rawToken, assignedToken, forwardAddr, forwardPort)
 
 		case "direct-tcpip":
 			var payload struct {
@@ -336,17 +340,22 @@ func (s *TunnelServer) handleSSHConnection(conn net.Conn, config *ssh.ServerConf
 	}
 }
 
-func (s *TunnelServer) handleSSHSession(ch ssh.Channel, reqs <-chan *ssh.Request, subdomain, token, assignedToken string) {
+func (s *TunnelServer) handleSSHSession(ch ssh.Channel, reqs <-chan *ssh.Request, subdomain, token, assignedToken string, forwardAddr string, forwardPort uint32) {
 	defer ch.Close()
+
+	localService := fmt.Sprintf("%s:%d", forwardAddr, forwardPort)
+	if forwardAddr == "" {
+		localService = fmt.Sprintf("127.0.0.1:%d", forwardPort)
+	}
 
 	banner := fmt.Sprintf(`
   🚀  goinstant ssh tunnel is active!
   ==================================================
-  🔌  Local Service:  127.0.0.1:8080 (via SSH -R)
+  🔌  Local Service:  %s (via SSH -R)
   🔒  Public URL:     https://%s.%s
   📊  Web Debugger:   http://localhost:4300
   ==================================================
-`, subdomain, s.Domain)
+`, localService, subdomain, s.Domain)
 
 	if assignedToken != "" {
 		banner += fmt.Sprintf("  🔑  Assigned Token: %s\n  (Saved for authentication in future runs)\n  ==================================================\n", assignedToken)
