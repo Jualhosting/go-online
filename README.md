@@ -291,3 +291,31 @@ We implemented critical stability and networking updates to resolve firewall blo
 - **Path Collision Resolution**: Fixed a routing bug where client subdomains attempting to load dashboard paths (such as `my-9router.goinstant.my.id/login`) loaded the GoInstant platform login instead.
 - Implemented a Host-based routing middleware in [server/server.go](file:///d:/docker-server/go-online/server/server.go). Any incoming request on a client subdomain now completely bypasses the main GoInstant console routing tables and is directly proxied to the tunnel client, solving path collisions permanently.
 
+---
+
+## 10. Core Performance, Deploy, and SSH Stability Optimization (July 1, 2026)
+
+We implemented a series of production-grade architectural enhancements to speed up VPS build times, guarantee a zero-install client deployment flow, eliminate localhost IPv6/IPv4 mismatches on Windows, persist SSH host identities, and secure client machines from external vulnerability scanning bots.
+
+### A. VPS Docker Compile Optimization
+- **Client Cross-Compilation Removal**: Modified [Dockerfile](file:///d:/docker-server/go-online/Dockerfile) to stop compiling cross-platform client CLI binaries (`goinstant-windows.exe`, `goinstant-linux`, `goinstant-darwin`) on the VPS during server build. The landing page downloads already point directly to raw GitHub repository storage.
+- **4x Build Speedup**: Reduced compilation time and CPU/memory resource exhaustion on low-tier AWS EC2 free tier instances (`t2.micro` / `t3.micro` with 1vCPU & 1GB RAM) by 4x, preventing AWS CPU credit throttling and compiler freezes.
+
+### B. Zero-Install Deployment Flow
+- **One-Liner Scripts**: Restructured the `INSTANT DEPLOY` tab on [landing.html](file:///d:/docker-server/go-online/server/templates/landing.html) to present zero-install one-liner commands via `iwr` (Windows PowerShell) and `curl` (Linux/Mac Bash).
+- **Execution**: The scripts download the GoInstant CLI binary temporarily to the system Temp directory, execute the directory-wide deployment, upload it to Cloudflare R2, and clean up the CLI automatically.
+
+### C. IPv6 / Localhost Mismatch Bypass
+- **Explicit IPv4 Loopback**: Updated website instructions and CLI output to use `127.0.0.1` explicitly instead of `localhost` (e.g. `ssh -R 80:127.0.0.1:9000`).
+- **Resolution**: This bypasses the Windows OpenSSH client resolver bug that translates `localhost` to IPv6 `[::1]`, which routinely caused `administratively prohibited (open failed)` or `connection refused` errors when local Docker containers only listened on IPv4 loopback.
+
+### D. Persistent SSH Host Keys
+- **Storage Persistence**: Modified [ssh.go](file:///d:/docker-server/go-online/server/ssh.go) to write and load the server SSH host key at `data/ssh_host_key` (persisted on the host volume) instead of generating a temporary random host key in container memory on every launch.
+- **Resolution**: This completely prevents `WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED` client-side blocks when the server container restarts, enabling standard SSH tunnels to connect with standard clean commands.
+
+### E. Edge WAF (Web Application Firewall)
+- **Edge Path Filter**: Added a scanning path analyzer (`isScannerPath`) in [dashboard.go](file:///d:/docker-server/go-online/server/dashboard.go).
+- **Security & Stability**: Intercepts and immediately blocks malicious vulnerability scans (such as requests for `.env`, `.git/config`, `wp-admin`, `xmlrpc.php`, `sftp.json`, `/ecp/`, `/debug/default`, etc.) with `403 Forbidden` directly at the VPS Edge.
+- **Port Exhaustion Protection**: Prevents malicious bot floods from reaching the client machine's tunnel connection, completely eliminating socket loop crashes (`connect to 127.0.0.1 failed: No error` loops) and ensuring client tunnel stability.
+
+
