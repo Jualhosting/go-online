@@ -75,10 +75,11 @@ func (s *sshConnWrap) SetWriteDeadline(t time.Time) error {
 }
 
 func getSSHHostKey() (ssh.Signer, error) {
-	keyPath := "ssh_host_key"
+	_ = os.MkdirAll("data", 0755)
+	keyPath := "data/ssh_host_key"
 	privateBytes, err := os.ReadFile(keyPath)
 	if err != nil {
-		log.Println("[SSH] Generating temporary host key...")
+		log.Println("[SSH] Generating persistent host key...")
 		key, err := rsa.GenerateKey(rand.Reader, 2048)
 		if err != nil {
 			return nil, err
