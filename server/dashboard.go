@@ -519,7 +519,44 @@ func (s *TunnelServer) handleAPIAnalytics(w http.ResponseWriter, r *http.Request
 	json.NewEncoder(w).Encode(points)
 }
 
+}
+
+func isScannerPath(path string) bool {
+	p := strings.ToLower(path)
+	// Block common vulnerability scanners and exploit attempts at the Edge
+	blockedPrefixes := []string{
+		"/.env", "/.git", "/.svn", "/.hg", "/.vscode", "/.idea",
+		"/wp-admin", "/wp-content", "/wp-includes", "/wp-json",
+		"/ecp/", "/owa/", "/autodiscover",
+		"/debug/default", "/trace.axd",
+	}
+	blockedSuffixes := []string{
+		".env", ".git/config", "sftp.json", "wp-login.php", "xmlrpc.php",
+		"config.php", "web.config", "database.yml", "secrets.yml",
+	}
+
+	for _, pref := range blockedPrefixes {
+		if strings.HasPrefix(p, pref) || strings.Contains(p, pref+"/") {
+			return true
+		}
+	}
+	for _, suff := range blockedSuffixes {
+		if strings.HasSuffix(p, suff) || strings.Contains(p, "/"+suff) {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *TunnelServer) handleClientTraffic(w http.ResponseWriter, r *http.Request) {
+	// Block vulnerability scanner bots at the Edge to protect client machine TCP socket limits
+	if isScannerPath(r.URL.Path) {
+		w.WriteHeader(http.StatusForbidden)
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Write([]byte("Forbidden: Threat blocked by GoInstant Edge WAF"))
+		return
+	}
+
 	host := r.Host
 	subdomain := s.extractSubdomain(host)
 	lookupKey := host
