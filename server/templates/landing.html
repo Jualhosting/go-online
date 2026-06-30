@@ -250,7 +250,7 @@
 <div class="terminal-block" id="terminal-content-1">
 <div class="flex gap-sm">
 <span class="text-secondary">$</span>
-<span class="text-on-surface typing-cursor" id="type-1">ssh -R 80:localhost:8080 -p 443 my-site@goinstant.my.id</span>
+<span class="text-on-surface typing-cursor" id="type-1">ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -R 80:localhost:8080 -p 443 my-site@goinstant.my.id</span>
 </div>
 <div class="mt-sm opacity-0 transition-opacity duration-500 delay-[1.5s] flex flex-col gap-xs" id="output-1">
 <span class="text-outline"></span>
@@ -467,14 +467,14 @@
                 const sub = inputSub.value.trim().toLowerCase().replace(/[^a-z0-9\-]/g, "") || defaultSub;
                 const port = inputPort.value.trim().replace(/[^0-9]/g, "") || "8080";
                 
-                if (cmdSsh) cmdSsh.value = `ssh -R 80:localhost:${port} -p 443 ${sub}@goinstant.my.id`;
+                if (cmdSsh) cmdSsh.value = `ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -R 80:localhost:${port} -p 443 ${sub}@goinstant.my.id`;
                 if (cmdDeployWin) cmdDeployWin.value = `iwr -useb "https://goinstant.my.id/in.ps1?sub=${sub}" | iex`;
                 if (cmdDeployUnix) cmdDeployUnix.value = `curl -sS "https://goinstant.my.id/in.sh?sub=${sub}" | bash`;
                 
                 // Update terminal text
                 const cmdText = document.getElementById("type-1");
                 if (cmdText) {
-                    cmdText.innerText = `ssh -R 80:localhost:${port} -p 443 ${sub}@goinstant.my.id`;
+                    cmdText.innerText = `ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -R 80:localhost:${port} -p 443 ${sub}@goinstant.my.id`;
                 }
                 const cmdText2 = document.getElementById("type-2");
                 if (cmdText2) {
