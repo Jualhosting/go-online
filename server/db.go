@@ -117,7 +117,8 @@ func (m *DBManager) migrate() error {
 	}
 
 	// Dynamic column migrations (ignore errors if columns exist)
-	_, _ = m.db.Exec("ALTER TABLE users ADD COLUMN token TEXT UNIQUE")
+	_, _ = m.db.Exec("ALTER TABLE users ADD COLUMN token TEXT")
+	_, _ = m.db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_token ON users(token)")
 	_, _ = m.db.Exec("ALTER TABLE users ADD COLUMN is_anonymous INTEGER DEFAULT 1")
 
 	return nil
