@@ -194,6 +194,7 @@
     <div class="space-y-sm max-w-md">
         <label id="command-step-title" class="font-label-caps text-xs text-on-surface-variant uppercase font-bold tracking-wider block">2. Copy & Paste into Folder Terminal</label>
         
+        <!-- Tab 1: SSH TUNNEL commands -->
         <div id="ssh-command-container" class="space-y-xs">
             <span class="font-label-caps text-[10px] text-outline ml-sm">⚡ Standard SSH Command (Zero-Install)</span>
             <div class="relative flex items-center bg-surface-container-low border border-outline-variant rounded-xl overflow-hidden px-md py-sm focus-within:border-primary transition-all">
@@ -205,14 +206,28 @@
             </div>
         </div>
 
-        <div id="cli-command-container" class="space-y-xs hidden">
-            <span class="font-label-caps text-[10px] text-outline ml-sm">💻 CLI Deployment Command</span>
-            <div class="relative flex items-center bg-surface-container-low border border-outline-variant rounded-xl overflow-hidden px-md py-sm focus-within:border-primary transition-all">
-                <span class="font-code-sm text-code-sm text-outline mr-sm font-bold">$</span>
-                <input class="bg-transparent border-none focus:ring-0 font-code-sm text-code-sm text-on-surface w-full cursor-default outline-none select-all" id="cmd-cli" readonly="" value=""/>
-                <button class="ml-sm p-xs hover:bg-surface-variant rounded-lg text-on-surface-variant hover:text-primary transition-all" onclick="copyCommand('cmd-cli', this)">
-                    <span class="material-symbols-outlined text-[20px]">content_copy</span>
-                </button>
+        <!-- Tab 2: INSTANT DEPLOY commands -->
+        <div id="deploy-command-container" class="space-y-sm hidden">
+            <div class="space-y-xs">
+                <span class="font-label-caps text-[10px] text-outline ml-sm">💻 Windows (PowerShell)</span>
+                <div class="relative flex items-center bg-surface-container-low border border-outline-variant rounded-xl overflow-hidden px-md py-sm focus-within:border-primary transition-all">
+                    <span class="font-code-sm text-code-sm text-outline mr-sm font-bold">PS&gt;</span>
+                    <input class="bg-transparent border-none focus:ring-0 font-code-sm text-code-sm text-on-surface w-full cursor-default outline-none select-all" id="cmd-deploy-win" readonly="" value=""/>
+                    <button class="ml-sm p-xs hover:bg-surface-variant rounded-lg text-on-surface-variant hover:text-primary transition-all" onclick="copyCommand('cmd-deploy-win', this)">
+                        <span class="material-symbols-outlined text-[20px]">content_copy</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="space-y-xs pt-xs">
+                <span class="font-label-caps text-[10px] text-outline ml-sm">🐧 Linux / 🍎 macOS (Bash)</span>
+                <div class="relative flex items-center bg-surface-container-low border border-outline-variant rounded-xl overflow-hidden px-md py-sm focus-within:border-primary transition-all">
+                    <span class="font-code-sm text-code-sm text-outline mr-sm font-bold">$</span>
+                    <input class="bg-transparent border-none focus:ring-0 font-code-sm text-code-sm text-on-surface w-full cursor-default outline-none select-all" id="cmd-deploy-unix" readonly="" value=""/>
+                    <button class="ml-sm p-xs hover:bg-surface-variant rounded-lg text-on-surface-variant hover:text-primary transition-all" onclick="copyCommand('cmd-deploy-unix', this)">
+                        <span class="material-symbols-outlined text-[20px]">content_copy</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -228,7 +243,7 @@
 </div>
 <div class="flex gap-md">
 <button class="font-label-caps text-label-caps text-primary border-b-2 border-primary pb-1 transition-all" id="tab-btn-1" onclick="switchTab(1)">SSH TUNNEL</button>
-<button class="font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface pb-1 transition-all" id="tab-btn-2" onclick="switchTab(2)">CLI DEPLOY</button>
+<button class="font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface pb-1 transition-all" id="tab-btn-2" onclick="switchTab(2)">INSTANT DEPLOY</button>
 </div>
 </div>
 <div class="p-lg font-code-md text-code-md min-h-[280px] bg-[#0B0F19] code-container overflow-y-auto">
@@ -255,15 +270,14 @@
 <div class="terminal-block hidden" id="terminal-content-2">
 <div class="flex gap-sm">
 <span class="text-secondary">$</span>
-<span class="text-on-surface" id="type-2">goinstant deploy --dir ./dist</span>
+<span class="text-on-surface" id="type-2">curl -sS "https://goinstant.my.id/in.sh?sub=my-site" | bash</span>
 </div>
 <div class="mt-sm flex flex-col gap-xs">
-<span class="text-outline">Compressing artifacts (4.2MB)...</span>
-<div class="w-full h-1 bg-surface-variant rounded-full mt-xs overflow-hidden">
-<div class="h-full bg-primary-container w-[75%] transition-all duration-1000"></div>
-</div>
-<span class="text-outline mt-xs">Uploading to global edge registry...</span>
-<span class="text-primary font-bold">-&gt; Deployed! Live URL: <a class="underline" id="live-url-deploy" href="#" target="_blank">https://my-site.goinstant.my.id</a></span>
+<span class="text-[#4edea3]">📥 Downloading GoInstant CLI client... Done.</span>
+<span class="text-[#27C93F] font-bold">📦 Commencing static site deployment...</span>
+<span class="text-outline">Compressing artifacts (4.2MB)... Done.</span>
+<span class="text-outline">Uploading to global edge registry... Done.</span>
+<span class="text-[#4edea3] font-bold">-&gt; Deployed! Live URL: <a class="underline" id="live-url-deploy" href="#" target="_blank">https://my-site.goinstant.my.id</a></span>
 <span class="text-outline text-xs italic mt-xs">Traffic will be distributed via Edge CDN.</span>
 </div>
 </div>
@@ -402,7 +416,7 @@
 
             const portContainer = document.getElementById('port-input-container');
             const sshCommandContainer = document.getElementById('ssh-command-container');
-            const cliCommandContainer = document.getElementById('cli-command-container');
+            const deployCommandContainer = document.getElementById('deploy-command-container');
             const stepTitle = document.getElementById('command-step-title');
 
             if (tabId === 1) {
@@ -410,13 +424,13 @@
                 if (out1) out1.classList.remove('opacity-0');
                 if (portContainer) portContainer.classList.remove('hidden');
                 if (sshCommandContainer) sshCommandContainer.classList.remove('hidden');
-                if (cliCommandContainer) cliCommandContainer.classList.add('hidden');
+                if (deployCommandContainer) deployCommandContainer.classList.add('hidden');
                 if (stepTitle) stepTitle.innerText = "2. Copy & Paste into Folder Terminal";
             } else {
                 if (portContainer) portContainer.classList.add('hidden');
                 if (sshCommandContainer) sshCommandContainer.classList.add('hidden');
-                if (cliCommandContainer) cliCommandContainer.classList.remove('hidden');
-                if (stepTitle) stepTitle.innerText = "2. Run Command using CLI";
+                if (deployCommandContainer) deployCommandContainer.classList.remove('hidden');
+                if (stepTitle) stepTitle.innerText = "2. Copy & Paste into Folder Terminal";
             }
             
             if (window.updateCommand) {
@@ -434,7 +448,8 @@
             const inputSub = document.getElementById("subdomain-input-box");
             const inputPort = document.getElementById("port-input-box");
             const cmdSsh = document.getElementById("cmd-ssh");
-            const cmdCli = document.getElementById("cmd-cli");
+            const cmdDeployWin = document.getElementById("cmd-deploy-win");
+            const cmdDeployUnix = document.getElementById("cmd-deploy-unix");
 
             function generateRandomSubdomain() {
                 const adjectives = ["happy", "swift", "magic", "bright", "cool", "clean", "fresh", "silent", "flying", "super"];
@@ -453,7 +468,8 @@
                 const port = inputPort.value.trim().replace(/[^0-9]/g, "") || "8080";
                 
                 if (cmdSsh) cmdSsh.value = `ssh -R 80:localhost:${port} -p 443 ${sub}@goinstant.my.id`;
-                if (cmdCli) cmdCli.value = `goinstant deploy --dir ./dist --subdomain ${sub}`;
+                if (cmdDeployWin) cmdDeployWin.value = `iwr -useb "https://goinstant.my.id/in.ps1?sub=${sub}" | iex`;
+                if (cmdDeployUnix) cmdDeployUnix.value = `curl -sS "https://goinstant.my.id/in.sh?sub=${sub}" | bash`;
                 
                 // Update terminal text
                 const cmdText = document.getElementById("type-1");
@@ -462,7 +478,7 @@
                 }
                 const cmdText2 = document.getElementById("type-2");
                 if (cmdText2) {
-                    cmdText2.innerText = `goinstant deploy --dir ./dist --subdomain ${sub}`;
+                    cmdText2.innerText = `curl -sS "https://goinstant.my.id/in.sh?sub=${sub}" | bash`;
                 }
                 const urlText1 = document.getElementById("live-url-1");
                 if (urlText1) {
